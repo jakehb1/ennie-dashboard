@@ -115,7 +115,7 @@ def lookup_eventbrite(email: str) -> dict:
         r = requests.get(
             f"https://www.eventbriteapi.com/v3/organizations/{EB_ORG_ID}/orders/",
             headers=headers,
-            params={"only_emails": email, "expand": "event,attendees", "page_size": 20},
+            params={"only_emails": email, "expand": "event,attendees"},
             timeout=10
         )
         if not r.ok:
