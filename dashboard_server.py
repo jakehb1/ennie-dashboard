@@ -37,6 +37,38 @@ def get_kajabi_token():
     return _kajabi_token["token"]
 
 
+def search_kajabi_by_name(query: str) -> list:
+    """Search Kajabi contacts by name, return list of {name, email} matches."""
+    try:
+        token = get_kajabi_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        results = []
+        page = 1
+        query_lower = query.lower()
+        while len(results) < 10:
+            r = requests.get("https://api.kajabi.com/v1/contacts", headers=headers,
+                             params={"page[size]": 200, "page[number]": page}, timeout=10)
+            if not r.ok:
+                break
+            contacts = r.json().get("data", [])
+            if not contacts:
+                break
+            for c in contacts:
+                attrs = c["attributes"]
+                name = f"{attrs.get('first_name','')} {attrs.get('last_name','')}".strip()
+                email = attrs.get("email", "")
+                if query_lower in name.lower() or query_lower in email.lower():
+                    results.append({"name": name, "email": email})
+                    if len(results) >= 10:
+                        break
+            if len(contacts) < 200:
+                break
+            page += 1
+        return results
+    except Exception as e:
+        return []
+
+
 def lookup_kajabi(email: str) -> dict:
     try:
         token = get_kajabi_token()
@@ -187,10 +219,31 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
 
+        elif parsed.path == "/search":
+            q = params.get("q", [""])[0].strip()
+            if not q:
+                self.send_json([])
+                return
+            results = search_kajabi_by_name(q)
+            self.send_json(results)
+
         elif parsed.path == "/lookup":
             email = params.get("email", [""])[0].strip()
+            query = params.get("q", [""])[0].strip()
+
+            # If name given (not email), resolve to email first
+            if not email and query and "@" not in query:
+                matches = search_kajabi_by_name(query)
+                if matches:
+                    email = matches[0]["email"]
+                else:
+                    self.send_json({"error": f"No contact found for '{query}'"})
+                    return
+            elif not email and query:
+                email = query
+
             if not email:
-                self.send_json({"error": "No email"}, 400)
+                self.send_json({"error": "No email or name provided"}, 400)
                 return
 
             kajabi = lookup_kajabi(email)

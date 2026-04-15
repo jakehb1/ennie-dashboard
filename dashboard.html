@@ -18,6 +18,9 @@
   button { padding: 12px 22px; background: #0066cc; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
   button:hover { background: #0052a3; }
   .hint { margin-top: 8px; font-size: 12px; color: #aaa; }
+  .suggestions { margin-top: 6px; }
+  .suggestion { display: inline-block; margin: 3px 3px 0 0; padding: 5px 12px; background: #f0f0f0; border-radius: 20px; font-size: 12px; cursor: pointer; transition: background 0.15s; }
+  .suggestion:hover { background: #e0e0e0; }
   .loading { text-align: center; padding: 48px; color: #999; }
   .spinner { display: inline-block; width: 22px; height: 22px; border: 3px solid #e0e0e0; border-top-color: #0066cc; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -62,9 +65,10 @@
 <div class="container">
   <div class="search-box">
     <div class="search-row">
-      <input type="email" id="email" placeholder="Enter email address..." onkeydown="if(event.key==='Enter')lookup()">
+      <input type="text" id="query" placeholder="Name or email address..." onkeydown="if(event.key==='Enter')lookup()" oninput="onInput(this.value)">
       <button onclick="lookup()">Look up</button>
     </div>
+    <div class="suggestions" id="suggestions"></div>
     <p class="hint">Searches Kajabi, Eventbrite, and Klaviyo</p>
   </div>
   <div class="loading" id="loading" style="display:none">
@@ -74,17 +78,47 @@
 </div>
 
 <script>
-async function lookup() {
-  const email = document.getElementById('email').value.trim();
-  if (!email) return;
+let suggestTimer;
 
+function onInput(val) {
+  clearTimeout(suggestTimer);
+  document.getElementById('suggestions').innerHTML = '';
+  if (val.trim().length < 2) return;
+  suggestTimer = setTimeout(() => fetchSuggestions(val.trim()), 300);
+}
+
+async function fetchSuggestions(q) {
+  if (q.includes('@')) return; // email — no suggest needed
+  try {
+    const r = await fetch('/search?q=' + encodeURIComponent(q));
+    const data = await r.json();
+    const box = document.getElementById('suggestions');
+    box.innerHTML = data.slice(0,8).map(s =>
+      `<span class="suggestion" onclick="selectSuggestion('${s.email}','${s.name.replace(/'/g,"\\'")}')">👤 ${s.name} &lt;${s.email}&gt;</span>`
+    ).join('');
+  } catch(e) {}
+}
+
+function selectSuggestion(email, name) {
+  document.getElementById('query').value = email;
+  document.getElementById('suggestions').innerHTML = '';
+  lookup();
+}
+
+async function lookup() {
+  const q = document.getElementById('query').value.trim();
+  if (!q) return;
+
+  document.getElementById('suggestions').innerHTML = '';
   document.getElementById('loading').style.display = 'block';
   document.getElementById('results').style.display = 'none';
   document.getElementById('results').innerHTML = '';
 
+  const param = q.includes('@') ? 'email' : 'q';
   try {
-    const r = await fetch('/lookup?email=' + encodeURIComponent(email));
+    const r = await fetch(`/lookup?${param}=` + encodeURIComponent(q));
     const data = await r.json();
+    if (data.error) throw new Error(data.error);
     document.getElementById('loading').style.display = 'none';
     document.getElementById('results').style.display = 'block';
     render(data);
