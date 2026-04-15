@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Inbox{% endblock %}
+
+{% block content %}
+<div class="page-header flex-between">
+  <div>
+    <h1 class="page-title">Inbox</h1>
+    <p class="page-subtitle">{{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} awaiting review</p>
+  </div>
+</div>
+
+{% if drafts %}
+<div class="draft-list">
+  {% for d in drafts %}
+  <div class="glass-card draft-card" data-draft-id="{{ d.id }}">
+
+    <div class="draft-card-header">
+      <div>
+        <div class="card-sender">{{ d.sender_name or d.sender_email }}</div>
+        <div class="card-subject">{{ d.subject }}</div>
+        <div class="card-meta">
+          <span>{{ d.sender_email }}</span>
+          <span>·</span>
+          <span>{{ d.created_at[:10] }}</span>
+        </div>
+      </div>
+      {% if d.classification %}
+      <span class="classification-badge">{{ d.classification | replace('_', ' ') }}</span>
+      {% endif %}
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);margin-bottom:6px;">Original email</div>
+      <div class="esc-body" style="margin:0;font-size:13px;">{{ d.body }}</div>
+    </div>
+
+    {% if d.draft_text %}
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);margin-bottom:6px;">Draft reply</div>
+      <div class="draft-preview">{{ d.draft_text }}</div>
+    </div>
+    {% endif %}
+
+    <div class="draft-actions">
+      <button class="btn btn-success btn-sm" onclick="approveDraft({{ d.id }})">
+        ✓ Approve
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="editDraft({{ d.id }})">
+        ✎ Edit + Approve
+      </button>
+      <button class="btn btn-warning btn-sm" onclick="escalateDraft({{ d.id }})">
+        ↑ Escalate to Cassie
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="rejectDraft({{ d.id }})">
+        ✕ Reject
+      </button>
+      <a href="{{ url_for('lookup') }}?email={{ d.sender_email }}"
+         class="btn btn-secondary btn-sm">
+        🔍 Lookup
+      </a>
+    </div>
+
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="glass-card empty-state">
+  <div class="empty-state-icon">✓</div>
+  <h3>All clear!</h3>
+  <p>No pending drafts in your inbox.</p>
+</div>
+{% endif %}
+
+<!-- Reject Modal -->
+<div class="modal-overlay" id="reject-modal">
+  <div class="modal">
+    <div class="modal-title">Reject Draft</div>
+    <div class="form-group">
+      <label class="form-label">Reason (optional)</label>
+      <textarea id="reject-notes" placeholder="Add a note about why this is being rejected…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('reject-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmReject()">Reject</button>
+    </div>
+  </div>
+</div>
+
+<!-- Escalate Modal -->
+<div class="modal-overlay" id="escalate-modal">
+  <div class="modal">
+    <div class="modal-title">Escalate to Cassie</div>
+    <div class="form-group">
+      <label class="form-label">Notes for Cassie</label>
+      <textarea id="escalate-notes" placeholder="Add context about why you're escalating this…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('escalate-modal')">Cancel</button>
+      <button class="btn btn-warning" onclick="confirmEscalate()">Escalate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Draft Reply</div>
+    <div class="form-group">
+      <label class="form-label">Reply text</label>
+      <textarea id="edit-draft-text" rows="8" placeholder="Edit the draft reply…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn btn-success" onclick="confirmEdit()">Save + Approve</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

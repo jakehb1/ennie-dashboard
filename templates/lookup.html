@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Contact Lookup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Contact Lookup</h1>
+  <p class="page-subtitle">Search Kajabi, Eventbrite and Klaviyo by email address</p>
+</div>
+
+<div class="search-bar">
+  <input type="email" id="lookup-email" placeholder="customer@example.com"
+         value="{{ request.args.get('email', '') }}"
+         autocomplete="off" spellcheck="false">
+  <button class="btn btn-primary" onclick="doLookup()">
+    Search
+  </button>
+</div>
+
+<div id="lookup-results">
+  {% if request.args.get('email') %}
+  <div style="text-align:center;padding:40px;">
+    <div class="spinner"></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto-lookup if email param present
+  const preEmail = "{{ request.args.get('email', '') | e }}";
+  if (preEmail) {
+    document.getElementById('lookup-email').value = preEmail;
+    doLookup();
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Knowledge Base{% endblock %}
+
+{% block content %}
+<div class="page-header flex-between">
+  <div>
+    <h1 class="page-title">Knowledge Base</h1>
+    <p class="page-subtitle">{{ entries|length }} Q&amp;A entr{% if entries|length == 1 %}y{% else %}ies{% endif %} across {{ topics|length }} topic{% if topics|length != 1 %}s{% endif %}</p>
+  </div>
+  <button class="btn btn-primary" onclick="openAddKB()">+ Add Entry</button>
+</div>
+
+{% if entries %}
+  {% for topic in topics %}
+  <div class="kb-section">
+    <div class="kb-topic">{{ topic }}</div>
+
+    {% for e in entries if e.topic == topic %}
+    <div class="glass-card kb-entry" id="kb-{{ e.id }}">
+      <div class="kb-question">{{ e.question }}</div>
+      <div class="kb-answer">{{ e.answer }}</div>
+      <div class="kb-footer">
+        <span>Added by {{ e.author or 'unknown' }} on {{ e.created_at[:10] }}</span>
+        <div class="flex gap-8">
+          <button class="btn btn-secondary btn-sm" onclick="editKBEntry({{ e.id }}, {{ e.topic|tojson }}, {{ e.question|tojson }}, {{ e.answer|tojson }})">
+            Edit
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteKBEntry({{ e.id }})">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+{% else %}
+<div class="glass-card empty-state">
+  <div class="empty-state-icon">📚</div>
+  <h3>Knowledge base is empty</h3>
+  <p>Add Q&amp;A pairs to help your team respond consistently.</p>
+</div>
+{% endif %}
+
+<!-- Add / Edit KB Modal -->
+<div class="modal-overlay" id="kb-modal">
+  <div class="modal">
+    <div class="modal-title" id="kb-modal-title">Add Knowledge Base Entry</div>
+    <form id="kb-form">
+      <input type="hidden" id="kb-edit-id" value="">
+      <div class="form-group">
+        <label class="form-label">Topic</label>
+        <input type="text" id="kb-topic" placeholder="e.g. Account Access, Refunds, Events…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Question</label>
+        <input type="text" id="kb-question" placeholder="What's the question or scenario?">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Answer / Response Template</label>
+        <textarea id="kb-answer" rows="6" placeholder="Write the standard response or answer…"></textarea>
+      </div>
+    </form>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('kb-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitKB()">Save Entry</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

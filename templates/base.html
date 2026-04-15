@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Ennie Support{% endblock %} — Charlie Goldsmith</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% if session.user_id %}
+<nav class="glass-nav">
+  <div class="nav-brand">
+    <span class="nav-logo">✦</span>
+    <span class="nav-title">Ennie Support</span>
+  </div>
+
+  <div class="nav-links">
+    {% if session.role in ['admin', 'reviewer'] %}
+    <a href="{{ url_for('inbox') }}"
+       class="nav-link{% if request.endpoint == 'inbox' %} active{% endif %}">
+      Inbox
+    </a>
+    {% endif %}
+
+    <a href="{{ url_for('lookup') }}"
+       class="nav-link{% if request.endpoint == 'lookup' %} active{% endif %}">
+      Lookup
+    </a>
+
+    {% if session.role in ['cassie', 'admin'] %}
+    <a href="{{ url_for('escalations') }}"
+       class="nav-link{% if request.endpoint == 'escalations' %} active{% endif %}">
+      Escalations
+    </a>
+    <a href="{{ url_for('knowledge_base') }}"
+       class="nav-link{% if request.endpoint == 'knowledge_base' %} active{% endif %}">
+      Knowledge Base
+    </a>
+    {% endif %}
+
+    {% if session.role in ['charlie', 'admin'] %}
+    <a href="{{ url_for('charlie') }}"
+       class="nav-link{% if request.endpoint == 'charlie' %} active{% endif %}">
+      Charlie
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="nav-user">
+    <span class="user-badge role-{{ session.role }}">{{ session.role }}</span>
+    <span class="user-name">{{ session.name }}</span>
+    <a href="{{ url_for('logout') }}" class="nav-link logout">Sign out</a>
+  </div>
+</nav>
+{% endif %}
+
+<main class="main-content">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- Toast container -->
+<div id="toast" class="toast"></div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
