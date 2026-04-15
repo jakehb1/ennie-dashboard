@@ -22,41 +22,7 @@ KLAVIYO_API_KEY = os.environ.get("KLAVIYO_API_KEY", "pk_8e0b3f093dfe5ae54a37b15f
 # Kajabi token cache
 _kajabi_token = {"token": None, "expires_at": 0}
 
-# In-memory contact cache — loaded once on startup, refreshed every 6 hours
-_contact_cache = {"contacts": [], "loaded_at": 0}
 
-def load_contact_cache():
-    import time
-    now = time.time()
-    if now - _contact_cache["loaded_at"] < 6 * 3600 and _contact_cache["contacts"]:
-        return
-    print("[cache] Loading Kajabi contacts into memory...")
-    try:
-        token = get_kajabi_token()
-        headers = {"Authorization": f"Bearer {token}"}
-        contacts = []
-        page = 1
-        while True:
-            r = requests.get("https://api.kajabi.com/v1/contacts", headers=headers,
-                             params={"page[size]": 200, "page[number]": page}, timeout=15)
-            if not r.ok:
-                break
-            batch = r.json().get("data", [])
-            if not batch:
-                break
-            for c in batch:
-                attrs = c["attributes"]
-                name = f"{attrs.get('first_name','')} {attrs.get('last_name','')}".strip()
-                contacts.append({"name": name, "email": attrs.get("email", ""), "id": c["id"]})
-            print(f"[cache] {len(contacts)} contacts loaded...")
-            if len(batch) < 200:
-                break
-            page += 1
-        _contact_cache["contacts"] = contacts
-        _contact_cache["loaded_at"] = now
-        print(f"[cache] Done — {len(contacts)} contacts cached")
-    except Exception as e:
-        print(f"[cache] Error loading contacts: {e}")
 
 def get_kajabi_token():
     import time
@@ -72,18 +38,6 @@ def get_kajabi_token():
         _kajabi_token["expires_at"] = now + (6 * 24 * 3600)
     return _kajabi_token["token"]
 
-
-def search_kajabi_by_name(query: str) -> list:
-    """Search cached contacts by name or email — instant after first load."""
-    load_contact_cache()  # no-op if already loaded
-    query_lower = query.lower().strip()
-    results = []
-    for c in _contact_cache["contacts"]:
-        if query_lower in c["name"].lower() or query_lower in c["email"].lower():
-            results.append({"name": c["name"], "email": c["email"]})
-            if len(results) >= 10:
-                break
-    return results
 
 
 def lookup_kajabi(email: str) -> dict:
@@ -236,28 +190,8 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
 
-        elif parsed.path == "/search":
-            q = params.get("q", [""])[0].strip()
-            if not q:
-                self.send_json([])
-                return
-            results = search_kajabi_by_name(q)
-            self.send_json(results)
-
         elif parsed.path == "/lookup":
             email = params.get("email", [""])[0].strip()
-            query = params.get("q", [""])[0].strip()
-
-            # If name given (not email), resolve to email first
-            if not email and query and "@" not in query:
-                matches = search_kajabi_by_name(query)
-                if matches:
-                    email = matches[0]["email"]
-                else:
-                    self.send_json({"error": f"No contact found for '{query}'"})
-                    return
-            elif not email and query:
-                email = query
 
             if not email:
                 self.send_json({"error": "No email or name provided"}, 400)
@@ -279,10 +213,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    # Pre-load contact cache in background so first search is instant
-    import threading
-    threading.Thread(target=load_contact_cache, daemon=True).start()
-
     server = HTTPServer(("0.0.0.0", PORT), Handler)
     print(f"Dashboard running on port {PORT}")
     server.serve_forever()
