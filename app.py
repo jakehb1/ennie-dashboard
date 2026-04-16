@@ -645,6 +645,22 @@ def admin_reset_db():
 
 
 # ── Entrypoint ─────────────────────────────────────────────────────────────────
+@app.route("/admin/sql-exec")
+def sql_exec():
+    """Execute raw SQL - REMOVE IN PRODUCTION"""
+    sql = request.args.get('sql', '')
+    if not sql:
+        return "Usage: /admin/sql-exec?sql=INSERT..."
+    
+    try:
+        db = get_db()
+        db.execute(sql)
+        db.commit()
+        return f"Success: {sql[:100]}..."
+    except Exception as e:
+        return f"Error: {e}"
+
+
 @app.route("/admin/add-real-data")
 def add_real_data():
     """Manually add real support data - remove after testing."""
