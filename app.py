@@ -399,10 +399,37 @@ def charlie():
 @app.route("/api/drafts/<int:draft_id>/approve", methods=["POST"])
 @login_required
 def api_approve(draft_id):
+    data = request.get_json() or {}
     db = get_db()
-    db.execute("UPDATE drafts SET status='approved', reviewed_by=? WHERE id=?",
-               (session["user_id"], draft_id))
+    draft = db.execute("SELECT * FROM drafts WHERE id=?", (draft_id,)).fetchone()
+    if not draft:
+        return jsonify({"error": "Not found"}), 404
+
+    # Allow editing the draft body before sending
+    final_body = data.get("draft_body", draft["draft_body"])
+
+    db.execute("UPDATE drafts SET status='approved', reviewed_by=?, draft_body=? WHERE id=?",
+               (session["user_id"], final_body, draft_id))
     db.commit()
+
+    # Fire webhook to local poller to actually send the email
+    send_webhook = os.environ.get("SEND_WEBHOOK_URL", "")
+    send_webhook_key = os.environ.get("SEND_WEBHOOK_KEY", "ennie-send-2025")
+    if send_webhook:
+        try:
+            import requests as _req
+            _req.post(send_webhook, headers={"X-API-Key": send_webhook_key},
+                json={
+                    "action": "send",
+                    "thread_id": draft["thread_id"],
+                    "to_email": draft["from_email"],
+                    "to_name": draft["from_name"],
+                    "subject": draft["subject"],
+                    "body": final_body,
+                }, timeout=10)
+        except Exception:
+            pass  # Don't block approval if webhook fails
+
     return jsonify({"ok": True})
 
 
@@ -520,6 +547,30 @@ def api_ingest():
             data["classification"], data.get("escalate", False),
             data.get("kajabi_found", False), data.get("eventbrite_found", False),
         ))
+    db.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/approved-drafts")
+def api_approved_drafts():
+    """Returns drafts approved but not yet sent — for the local poller to send."""
+    api_key = request.headers.get("X-API-Key", "")
+    if api_key != os.environ.get("INGEST_API_KEY", "ennie-ingest-2025"):
+        return jsonify({"error": "Unauthorized"}), 403
+    db = get_db()
+    drafts = db.execute(
+        "SELECT * FROM drafts WHERE status='approved' ORDER BY updated_at ASC"
+    ).fetchall()
+    return jsonify([dict(d) for d in drafts])
+
+
+@app.route("/api/drafts/<int:draft_id>/mark-sent", methods=["POST"])
+def api_mark_sent(draft_id):
+    api_key = request.headers.get("X-API-Key", "")
+    if api_key != os.environ.get("INGEST_API_KEY", "ennie-ingest-2025"):
+        return jsonify({"error": "Unauthorized"}), 403
+    db = get_db()
+    db.execute("UPDATE drafts SET status='sent', updated_at=datetime('now') WHERE id=?", (draft_id,))
     db.commit()
     return jsonify({"ok": True})
 
