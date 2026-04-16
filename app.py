@@ -60,7 +60,7 @@ def dashboard():
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             min-height: 100vh; padding: 20px;
         }
@@ -137,9 +137,12 @@ def dashboard():
             line-height: 1.5;
         }
         .empty-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-            opacity: 0.7;
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            background: #e9ecef;
+            border-radius: 50%;
+            opacity: 0.5;
         }
         @media (max-width: 768px) {
             .draft-header { flex-direction: column; align-items: flex-start; }
@@ -148,10 +151,10 @@ def dashboard():
     </style>
 </head>
 <body>
-    <div class="live-indicator">🔴 LIVE</div>
+    <div class="live-indicator">LIVE</div>
     <div class="container">
         <div class="header">
-            <h1>📧 Ennie Support Dashboard</h1>
+            <h1>Ennie Support Dashboard</h1>
             <p>Team Access • Auto-updates • {{ drafts|length }} Pending</p>
         </div>
         
@@ -194,16 +197,16 @@ def dashboard():
                 </div>
                 
                 <div class="actions">
-                    <button class="btn btn-approve">✓ Approve</button>
-                    <button class="btn btn-edit">✎ Edit</button>
-                    <button class="btn btn-escalate">⚠ Escalate</button>
-                    <button class="btn btn-reject">✗ Reject</button>
+                    <button class="btn btn-approve">Approve</button>
+                    <button class="btn btn-edit">Edit</button>
+                    <button class="btn btn-escalate">Escalate</button>
+                    <button class="btn btn-reject">Reject</button>
                 </div>
             </div>
             {% endfor %}
         {% else %}
             <div class="empty">
-                <div class="empty-icon">📧</div>
+                <div class="empty-icon"></div>
                 <h2>All Caught Up!</h2>
                 <p>No pending support emails right now.<br>New messages will appear here automatically when they arrive.</p>
             </div>
