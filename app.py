@@ -213,7 +213,7 @@ def api_ingest():
         ))
         
         db.commit()
-        draft_id = db.lastrowid
+        draft_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
         db.close()
         
         return jsonify({'ok': True, 'draft_id': draft_id})
