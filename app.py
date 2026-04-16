@@ -61,7 +61,7 @@ def dashboard():
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             min-height: 100vh; padding: 20px;
         }
         .container { max-width: 1000px; margin: 0 auto; }
@@ -70,16 +70,16 @@ def dashboard():
             border-radius: 16px; padding: 24px; margin-bottom: 24px; text-align: center;
             border: 1px solid rgba(255,255,255,0.2);
         }
-        .header h1 { color: white; font-size: 28px; margin: 0 0 8px 0; }
-        .header p { color: rgba(255,255,255,0.8); margin: 0; }
+        .header h1 { color: #1a1a1a; font-size: 28px; margin: 0 0 8px 0; }
+        .header p { color: #666; margin: 0; }
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .stat-card {
             background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
             border-radius: 12px; padding: 16px; text-align: center;
             border: 1px solid rgba(255,255,255,0.2);
         }
-        .stat-number { font-size: 24px; font-weight: 700; color: white; margin-bottom: 4px; }
-        .stat-label { color: rgba(255,255,255,0.8); font-size: 12px; text-transform: uppercase; }
+        .stat-number { font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+        .stat-label { color: #666; font-size: 12px; text-transform: uppercase; }
         .draft-card {
             background: rgba(255,255,255,0.95); border-radius: 16px; padding: 20px;
             margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
