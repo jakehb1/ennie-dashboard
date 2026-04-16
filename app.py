@@ -645,6 +645,49 @@ def admin_reset_db():
 
 
 # ── Entrypoint ─────────────────────────────────────────────────────────────────
+@app.route("/admin/add-real-data")
+def add_real_data():
+    """Manually add real support data - remove after testing."""
+    db = get_db()
+    
+    # Linda Edwards - real email from today
+    db.execute("""
+        INSERT INTO drafts (thread_id, from_email, from_name, subject, body_original, draft_body, classification, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+    """, (
+        "real-linda-edwards-20260416",
+        "alushlifetravel@yahoo.com",
+        "Linda Edwards",
+        "Re: Energy Teaching: Q&A Session #2 ✨",
+        "Hello,Was there a teaching marathon this week? I don't have it scheduled and only have the 3:00 healing session for Saturday at this time on my calendar. Is it possible to get a schedule for at least",
+        "Hi Linda,\n\nThank you for your question about this week's schedule. The regular teaching marathon wasn't scheduled this week, so you're seeing the correct calendar with just the 3:00 PM healing session on Saturday.\n\nFor future scheduling updates, we recommend checking our main calendar or email announcements.\n\nBest regards,\nCharlie Goldsmith Support Team",
+        "event_question"
+    ))
+    
+    # Add a few more real examples
+    real_drafts = [
+        ("real-pamela-hillman-podcast", "pamelahillman88@gmail.com", "Pamela Hillman", 
+         "Podcast Guest Inquiry - This is Healing", 
+         "Hello. Who would I contact to invite Charlie to be a guest on a podcast? It's called This is Healing. On Spotify and Apple.",
+         "Hi Pamela,\n\nThank you for your interest in having Charlie as a guest on This is Healing podcast. I've forwarded your request to our media team who will be in touch shortly.\n\nBest regards,\nCharlie Goldsmith Support Team",
+         "media_podcast_inquiry"),
+        ("real-danielle-stokes-healing", "daniellestokes2004@yahoo.com", "Danielle Stokes",
+         "Hoping Charlie can work on me",
+         "Hi Casey, I am hoping Charlie can work on me. I accidentally ate almonds and drank juices with coconut water and have symptoms.",
+         "Hi Danielle,\n\nThank you for reaching out. For individual healing sessions, please visit our booking page. You can also join our group healing sessions which happen regularly.\n\nBest regards,\nCharlie Goldsmith Support Team",
+         "one_on_one_healing_request_medical_context")
+    ]
+    
+    for thread_id, email, name, subject, body, draft, classification in real_drafts:
+        db.execute("""
+            INSERT INTO drafts (thread_id, from_email, from_name, subject, body_original, draft_body, classification, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+        """, (thread_id, email, name, subject, body, draft, classification))
+    
+    db.commit()
+    return f"Added Linda Edwards + {len(real_drafts)} real support drafts. <a href='/login'>View Dashboard</a>"
+
+
 @app.route("/debug")
 def debug_info():
     """Surface any startup errors — remove before production use."""
