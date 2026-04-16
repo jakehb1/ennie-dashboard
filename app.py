@@ -58,17 +58,22 @@ def init_db():
             name          TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS drafts (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            sender_email  TEXT NOT NULL,
-            sender_name   TEXT,
-            subject       TEXT NOT NULL,
-            body          TEXT NOT NULL,
-            classification TEXT,
-            draft_text    TEXT,
-            status        TEXT DEFAULT 'pending',
-            created_at    TEXT DEFAULT (datetime('now')),
-            reviewed_by   INTEGER,
-            notes         TEXT
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            thread_id       TEXT UNIQUE,
+            from_email      TEXT NOT NULL,
+            from_name       TEXT,
+            subject         TEXT NOT NULL,
+            body_original   TEXT NOT NULL,
+            draft_body      TEXT,
+            classification  TEXT,
+            escalate        BOOLEAN DEFAULT FALSE,
+            kajabi_found    BOOLEAN DEFAULT FALSE,
+            eventbrite_found BOOLEAN DEFAULT FALSE,
+            status          TEXT DEFAULT 'pending',
+            created_at      TEXT DEFAULT (datetime('now')),
+            updated_at      TEXT DEFAULT (datetime('now')),
+            reviewed_by     INTEGER,
+            notes           TEXT
         );
         CREATE TABLE IF NOT EXISTS knowledge_base (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,10 +134,11 @@ def init_db():
              "Please try clearing your cache or using an incognito window. Let me know if that helps!"),
         ]
         for sender_email, sender_name, subject, body, classification, draft_text in demos:
+            thread_id = f"demo-{sender_email.replace('@', '_').replace('.', '_')}"
             db.execute(
-                "INSERT INTO drafts (sender_email,sender_name,subject,body,classification,draft_text,status) "
-                "VALUES (?,?,?,?,?,?,'pending')",
-                (sender_email, sender_name, subject, body, classification, draft_text),
+                "INSERT INTO drafts (thread_id,from_email,from_name,subject,body_original,draft_body,classification,status) "
+                "VALUES (?,?,?,?,?,?,?,'pending')",
+                (thread_id, sender_email, sender_name, subject, body, draft_text, classification),
             )
 
     db.commit()
