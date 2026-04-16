@@ -487,6 +487,43 @@ def api_lookup():
     })
 
 
+@app.route("/api/ingest", methods=["POST"])
+def api_ingest():
+    """Receive a draft from the local poller. Protected by API key."""
+    api_key = request.headers.get("X-API-Key", "")
+    expected = os.environ.get("INGEST_API_KEY", "ennie-ingest-2025")
+    if api_key != expected:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json() or {}
+    required = ["thread_id", "from_email", "from_name", "subject", "body_original", "draft_body", "classification"]
+    if not all(data.get(k) for k in required):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    db = get_db()
+
+    # Upsert — update if thread already exists
+    existing = db.execute("SELECT id FROM drafts WHERE thread_id=?", (data["thread_id"],)).fetchone()
+    if existing:
+        db.execute("""
+            UPDATE drafts SET draft_body=?, classification=?, escalate=?, updated_at=datetime('now')
+            WHERE thread_id=?
+        """, (data["draft_body"], data["classification"], data.get("escalate", False), data["thread_id"]))
+    else:
+        db.execute("""
+            INSERT INTO drafts (thread_id, from_email, from_name, subject, body_original, draft_body,
+                                classification, escalate, kajabi_found, eventbrite_found, status)
+            VALUES (?,?,?,?,?,?,?,?,?,?,'pending')
+        """, (
+            data["thread_id"], data["from_email"], data["from_name"],
+            data["subject"], data["body_original"], data["draft_body"],
+            data["classification"], data.get("escalate", False),
+            data.get("kajabi_found", False), data.get("eventbrite_found", False),
+        ))
+    db.commit()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/kb", methods=["GET"])
 @login_required
 def api_kb_get():
