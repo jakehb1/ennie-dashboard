@@ -133,12 +133,12 @@ def init_db():
              "Hi Lisa, sorry to hear you're having trouble with Module 3. This is usually a browser cache issue. "
              "Please try clearing your cache or using an incognito window. Let me know if that helps!"),
         ]
-        for sender_email, sender_name, subject, body, classification, draft_text in demos:
-            thread_id = f"demo-{sender_email.replace('@', '_').replace('.', '_')}"
+        for from_email, from_name, subject, body, classification, draft_body in demos:
+            thread_id = f"demo-{from_email.replace('@', '_').replace('.', '_')}"
             db.execute(
                 "INSERT INTO drafts (thread_id,from_email,from_name,subject,body_original,draft_body,classification,status) "
                 "VALUES (?,?,?,?,?,?,?,'pending')",
-                (thread_id, sender_email, sender_name, subject, body, draft_text, classification),
+                (thread_id, from_email, from_name, subject, body, draft_body, classification),
             )
 
     db.commit()
@@ -364,7 +364,7 @@ def lookup():
 def escalations():
     db = get_db()
     items = db.execute("""
-        SELECT e.*, d.sender_email, d.sender_name, d.subject, d.body, d.classification
+        SELECT e.*, d.from_email, d.from_name, d.subject, d.body, d.classification
         FROM escalations e
         JOIN drafts d ON e.draft_id = d.id
         WHERE e.escalated_to = 'cassie' AND e.status = 'open'
@@ -392,7 +392,7 @@ def knowledge_base():
 def charlie():
     db = get_db()
     items = db.execute("""
-        SELECT e.*, d.sender_email, d.sender_name, d.subject, d.body, d.classification
+        SELECT e.*, d.from_email, d.from_name, d.subject, d.body, d.classification
         FROM escalations e
         JOIN drafts d ON e.draft_id = d.id
         WHERE e.escalated_to = 'charlie' AND e.status = 'open'
@@ -471,8 +471,8 @@ def api_edit(draft_id):
     data = request.get_json() or {}
     db = get_db()
     db.execute(
-        "UPDATE drafts SET draft_text=?, status='approved', reviewed_by=? WHERE id=?",
-        (data.get("draft_text", ""), session["user_id"], draft_id),
+        "UPDATE drafts SET draft_body=?, status='approved', reviewed_by=? WHERE id=?",
+        (data.get("draft_body", ""), session["user_id"], draft_id),
     )
     db.commit()
     return jsonify({"ok": True})
