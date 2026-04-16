@@ -116,7 +116,31 @@ def dashboard():
             position: fixed; top: 16px; right: 16px; background: #34C759;
             color: white; padding: 6px 10px; border-radius: 16px; font-size: 11px; font-weight: 600;
         }
-        .empty { text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.8); }
+        .empty { 
+            background: rgba(255, 255, 255, 0.95); 
+            border-radius: 16px; 
+            padding: 60px 40px; 
+            margin: 40px 0;
+            text-align: center; 
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .empty h2 {
+            color: #1a1a1a;
+            font-size: 24px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        .empty p {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.7;
+        }
         @media (max-width: 768px) {
             .draft-header { flex-direction: column; align-items: flex-start; }
             .actions { width: 100%; } .btn { flex: 1; }
@@ -179,8 +203,9 @@ def dashboard():
             {% endfor %}
         {% else %}
             <div class="empty">
-                <h2>No Pending Support Emails</h2>
-                <p>All caught up! New emails will appear here automatically.</p>
+                <div class="empty-icon">📧</div>
+                <h2>All Caught Up!</h2>
+                <p>No pending support emails right now.<br>New messages will appear here automatically when they arrive.</p>
             </div>
         {% endif %}
     </div>
