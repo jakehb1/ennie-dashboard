@@ -92,10 +92,10 @@ def init_db():
 
     # Seed users
     seed_users = [
-        ("Admin",    "admin@goldsmith.team",    "admin123",    "admin"),
-        ("Reviewer", "reviewer@goldsmith.team", "reviewer123", "reviewer"),
-        ("Cassie",   "cassie@goldsmith.team",   "cassie123",   "cassie"),
-        ("Charlie",  "charlie@goldsmith.team",  "charlie123",  "charlie"),
+        ("Admin",    "admin@charliegoldsmith.com",    "admin123",    "admin"),
+        ("Reviewer", "reviewer@charliegoldsmith.com", "reviewer123", "reviewer"),
+        ("Cassie",   "cassie@charliegoldsmith.com",   "cassie123",   "cassie"),
+        ("Charlie",  "charlie@charliegoldsmith.com",  "charlie123",  "charlie"),
     ]
     for name, email, password, role in seed_users:
         if not db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
@@ -533,6 +533,21 @@ def api_kb_delete(entry_id):
     db.execute("DELETE FROM knowledge_base WHERE id=?", (entry_id,))
     db.commit()
     return jsonify({"ok": True})
+
+
+@app.route("/admin/reset-db")
+def admin_reset_db():
+    """Reset and re-seed the DB. Protected by env var."""
+    secret = request.args.get("secret", "")
+    if secret != os.environ.get("RESET_SECRET", "ennie-reset-2025"):
+        return "Unauthorized", 403
+    import os as _os
+    try:
+        _os.remove(DATABASE)
+    except Exception:
+        pass
+    init_db()
+    return "DB reset and re-seeded. <a href='/login'>Login</a>"
 
 
 # ── Entrypoint ─────────────────────────────────────────────────────────────────
