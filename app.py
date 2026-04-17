@@ -118,6 +118,13 @@ def get_drafts():
     pending = [d for d in drafts if d.get('status') == 'pending']
     return jsonify(pending)
 
+@app.route('/api/test', methods=['GET', 'POST'])
+def api_test():
+    """Test endpoint to verify API is working."""
+    if request.method == 'POST':
+        return jsonify({'method': 'POST', 'status': 'success'})
+    return jsonify({'method': 'GET', 'status': 'success'})
+
 @app.route('/')
 def dashboard():
     # Load real drafts from file, fallback to demo data
