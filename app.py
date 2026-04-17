@@ -80,36 +80,36 @@ real_emails = [
     }
 ]
 
-@app.route('/api/drafts', methods=['POST'])
-def create_draft():
-    """API endpoint for support runner to submit new drafts."""
+@app.route('/submit', methods=['POST'])
+def submit_draft():
+    """Simple endpoint for support runner to submit drafts."""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         draft_id = str(uuid.uuid4())
         
         new_draft = {
             'id': draft_id,
-            'thread_id': data.get('thread_id'),
-            'message_id': data.get('message_id'),
-            'from_email': data['from_email'],
-            'from_name': data['from_name'],
-            'subject': data['subject'],
-            'body_original': data['body_original'],
-            'draft_body': data['draft_body'],
-            'classification': data.get('classification'),
-            'escalate': data.get('escalate', False),
-            'escalation_reason': data.get('escalation_reason'),
+            'thread_id': data.get('thread_id', ''),
+            'message_id': data.get('message_id', ''),
+            'from_email': data.get('from_email', ''),
+            'from_name': data.get('from_name', ''),
+            'subject': data.get('subject', ''),
+            'body_original': data.get('body_original', ''),
+            'draft_body': data.get('draft_body', ''),
+            'classification': data.get('classification', ''),
+            'escalate': bool(data.get('escalate', False)),
+            'escalation_reason': data.get('escalation_reason', ''),
             'status': 'pending',
             'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         
         drafts = load_drafts()
-        drafts.append(new_draft)
+        drafts.insert(0, new_draft)  # Add to front
         save_drafts(drafts)
         
-        return jsonify({'id': draft_id, 'status': 'created'}), 201
+        return f'{{"id":"{draft_id}","status":"created"}}', 201
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return f'{{"error":"{str(e)}"}}', 500
 
 @app.route('/api/drafts', methods=['GET'])
 def get_drafts():
