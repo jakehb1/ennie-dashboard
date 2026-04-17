@@ -115,9 +115,40 @@ def webhook():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/drafts', methods=['GET'])
-def get_drafts():
-    """Get all pending drafts."""
+@app.route('/api/drafts', methods=['GET', 'POST'])
+def handle_drafts():
+    """Handle both GET and POST for drafts."""
+    if request.method == 'POST':
+        # Create new draft
+        try:
+            data = request.get_json() or {}
+            draft_id = str(uuid.uuid4())
+            
+            new_draft = {
+                'id': draft_id,
+                'thread_id': data.get('thread_id', ''),
+                'message_id': data.get('message_id', ''),
+                'from_email': data.get('from_email', ''),
+                'from_name': data.get('from_name', ''),
+                'subject': data.get('subject', ''),
+                'body_original': data.get('body_original', ''),
+                'draft_body': data.get('draft_body', ''),
+                'classification': data.get('classification', ''),
+                'escalate': bool(data.get('escalate', False)),
+                'escalation_reason': data.get('escalation_reason', ''),
+                'status': 'pending',
+                'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            drafts = load_drafts()
+            drafts.insert(0, new_draft)
+            save_drafts(drafts)
+            
+            return jsonify({'id': draft_id, 'status': 'created'}), 201
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    # GET request - return drafts
     drafts = load_drafts()
     pending = [d for d in drafts if d.get('status') == 'pending']
     return jsonify(pending)
