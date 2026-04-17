@@ -13,8 +13,17 @@ import uuid
 
 app = Flask(__name__)
 
+# Debug logging
+app.logger.info(f"Starting Ennie Dashboard, DATABASE={DATABASE}")
+print(f"[STARTUP] Database path: {DATABASE}")
+print(f"[STARTUP] Environment PORT: {os.environ.get('PORT', 'not set')}")
+print(f"[STARTUP] Flask app created, registering routes...")
+
 # Database setup
 DATABASE = os.environ.get('DATABASE_PATH', '/tmp/ennie_drafts.db')
+
+# Ensure database directory exists
+os.makedirs(os.path.dirname(DATABASE), exist_ok=True)
 
 def init_db():
     """Initialize the SQLite database with required tables."""
@@ -62,6 +71,16 @@ def get_db():
 
 # Initialize database on startup
 init_db()
+
+@app.route('/test')
+def test():
+    """Simple test route."""
+    return {'status': 'ok', 'message': 'API routes are working'}
+
+@app.route('/api/test')
+def api_test():
+    """API test route."""
+    return jsonify({'api_status': 'working', 'database': DATABASE})
 
 @app.route('/')
 def dashboard():
@@ -485,6 +504,11 @@ DASHBOARD_TEMPLATE = '''
 </body>
 </html>
 '''
+
+# Print all registered routes for debugging
+print("[STARTUP] Registered routes:")
+for rule in app.url_map.iter_rules():
+    print(f"  {rule.methods} {rule.rule}")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
