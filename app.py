@@ -80,9 +80,13 @@ real_emails = [
     }
 ]
 
-@app.route('/submit', methods=['POST'])
-def submit_draft():
-    """Simple endpoint for support runner to submit drafts."""
+@app.route('/webhook', methods=['GET', 'POST'])
+def webhook():
+    """Webhook endpoint for support runner."""
+    if request.method == 'GET':
+        return jsonify({'status': 'webhook ready', 'methods': ['GET', 'POST']})
+    
+    # Handle POST request
     try:
         data = request.get_json() or {}
         draft_id = str(uuid.uuid4())
@@ -107,9 +111,9 @@ def submit_draft():
         drafts.insert(0, new_draft)  # Add to front
         save_drafts(drafts)
         
-        return f'{{"id":"{draft_id}","status":"created"}}', 201
+        return jsonify({'id': draft_id, 'status': 'created'}), 201
     except Exception as e:
-        return f'{{"error":"{str(e)}"}}', 500
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/drafts', methods=['GET'])
 def get_drafts():
