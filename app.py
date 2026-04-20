@@ -234,6 +234,46 @@ def dashboard():
         .btn-edit { background: #007AFF; }
         .btn-escalate { background: #FF9500; }
         .btn-reject { background: #FF3B30; }
+        .user-link { color: inherit; text-decoration: none; cursor: pointer; }
+        .user-link:hover { text-decoration: underline; color: #007AFF; }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s ease;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal {
+            background: white; border-radius: 16px; max-width: 800px; width: 90vw; max-height: 80vh;
+            overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            transform: translateY(20px) scale(0.95); transition: all 0.3s ease;
+        }
+        .modal-overlay.active .modal { transform: translateY(0) scale(1); }
+        .modal-header {
+            padding: 20px 24px; border-bottom: 1px solid #eee;
+            display: flex; justify-content: between; align-items: center;
+        }
+        .modal-title { margin: 0; font-size: 20px; font-weight: 600; }
+        .modal-close {
+            background: none; border: none; font-size: 24px; cursor: pointer;
+            color: #666; margin-left: auto;
+        }
+        .modal-body { padding: 24px; }
+        .lookup-card {
+            background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 16px;
+            border-left: 4px solid #007AFF;
+        }
+        .lookup-card h4 { margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .lookup-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .lookup-key { font-weight: 600; color: #666; }
+        .lookup-val { color: #333; }
+        .tag-list { display: flex; gap: 6px; flex-wrap: wrap; }
+        .tag { 
+            background: #007AFF; color: white; padding: 2px 8px; border-radius: 12px;
+            font-size: 11px; font-weight: 500;
+        }
+        .not-found { color: #999; font-style: italic; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .live-indicator {
             position: fixed; top: 16px; right: 16px; background: #34C759;
             color: white; padding: 6px 10px; border-radius: 16px; font-size: 11px; font-weight: 600;
@@ -271,7 +311,7 @@ def dashboard():
         <div class="draft-card" data-draft-id="{{ draft.id }}">
             <div class="draft-header">
                 <div class="contact">
-                    <h3>{{ draft.from_name }}</h3>
+                    <h3><a href="#" class="user-link" onclick="lookupUser('{{ draft.from_email }}', '{{ draft.from_name }}'); return false;">{{ draft.from_name }}</a></h3>
                     <div class="email">{{ draft.from_email }}</div>
                     <div class="time">{{ draft.created_at }}</div>
                 </div>
@@ -298,6 +338,23 @@ def dashboard():
             </div>
         </div>
         {% endfor %}
+    </div>
+    
+    <!-- User Lookup Modal -->
+    <div class="modal-overlay" id="lookup-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="lookup-title">User Lookup</h3>
+                <button class="modal-close" onclick="closeLookupModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="lookup-loading" style="text-align: center; padding: 40px;">
+                    <div style="display: inline-block; width: 32px; height: 32px; border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #007AFF; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 16px; color: #666;">Loading user data...</p>
+                </div>
+                <div id="lookup-results" style="display: none;"></div>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -411,6 +468,96 @@ function editDraft(id) {
     }
   });
 }
+
+// ── User Lookup ──────────────────────────────────────────────────────────────
+function lookupUser(email, name) {
+  document.getElementById('lookup-title').textContent = `${name} (${email})`;
+  document.getElementById('lookup-loading').style.display = 'block';
+  document.getElementById('lookup-results').style.display = 'none';
+  document.getElementById('lookup-modal').classList.add('active');
+  
+  fetch(`/api/lookup?email=${encodeURIComponent(email)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        document.getElementById('lookup-results').innerHTML = `<p class="not-found">Error: ${data.error}</p>`;
+      } else {
+        renderLookupData(data);
+      }
+      document.getElementById('lookup-loading').style.display = 'none';
+      document.getElementById('lookup-results').style.display = 'block';
+    })
+    .catch(e => {
+      document.getElementById('lookup-results').innerHTML = `<p class="not-found">Network error: ${e.message}</p>`;
+      document.getElementById('lookup-loading').style.display = 'none';
+      document.getElementById('lookup-results').style.display = 'block';
+    });
+}
+
+function renderLookupData(data) {
+  const { kajabi, eventbrite, klaviyo } = data;
+  let html = '';
+  
+  // Kajabi section
+  html += '<div class="lookup-card">';
+  html += '<h4>🏛 Kajabi</h4>';
+  if (kajabi.found) {
+    if (kajabi.name) html += `<div class="lookup-row"><span class="lookup-key">Name</span><span class="lookup-val">${kajabi.name}</span></div>`;
+    if (kajabi.logins) html += `<div class="lookup-row"><span class="lookup-key">Logins</span><span class="lookup-val">${kajabi.logins}</span></div>`;
+    if (kajabi.last_active) html += `<div class="lookup-row"><span class="lookup-key">Last Active</span><span class="lookup-val">${kajabi.last_active}</span></div>`;
+    if (kajabi.offers && kajabi.offers.length) {
+      html += '<div class="lookup-row"><span class="lookup-key">Offers</span><div class="tag-list">';
+      kajabi.offers.forEach(offer => html += `<span class="tag">${offer}</span>`);
+      html += '</div></div>';
+    }
+    if (kajabi.tags && kajabi.tags.length) {
+      html += '<div class="lookup-row"><span class="lookup-key">Tags</span><div class="tag-list">';
+      kajabi.tags.forEach(tag => html += `<span class="tag">${tag}</span>`);
+      html += '</div></div>';
+    }
+  } else {
+    html += `<p class="not-found">${kajabi.summary}</p>`;
+  }
+  html += '</div>';
+  
+  // Eventbrite section
+  html += '<div class="lookup-card">';
+  html += '<h4>🎫 Eventbrite</h4>';
+  if (eventbrite.found && eventbrite.orders.length) {
+    eventbrite.orders.forEach(order => {
+      html += '<div style="padding: 8px 0; border-bottom: 1px solid #eee; margin-bottom: 8px;">';
+      html += `<div style="font-weight: 600; margin-bottom: 4px;">${order.event_name}</div>`;
+      html += `<div style="font-size: 13px; color: #666;">${order.event_date} • ${order.ticket_type} • ${order.status}</div>`;
+      html += '</div>';
+    });
+  } else {
+    html += `<p class="not-found">${eventbrite.summary}</p>`;
+  }
+  html += '</div>';
+  
+  // Klaviyo section
+  html += '<div class="lookup-card">';
+  html += '<h4>📧 Klaviyo</h4>';
+  if (klaviyo.found) {
+    html += `<p>${klaviyo.summary}</p>`;
+  } else {
+    html += `<p class="not-found">${klaviyo.summary}</p>`;
+  }
+  html += '</div>';
+  
+  document.getElementById('lookup-results').innerHTML = html;
+}
+
+function closeLookupModal() {
+  document.getElementById('lookup-modal').classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('active');
+  }
+});
     </script>
 </body>
 </html>
@@ -493,6 +640,58 @@ def edit_draft(draft_id):
         return jsonify({'error': 'Draft not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/lookup', methods=['GET'])
+def lookup_user():
+    """Look up user across Kajabi, Eventbrite, and Klaviyo."""
+    email = request.args.get('email', '').strip()
+    if not email:
+        return jsonify({'error': 'Email parameter required'}), 400
+    
+    try:
+        # Import lookup functions from support agent
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+        from support_agent import lookup_kajabi, lookup_eventbrite, lookup_klaviyo
+        
+        # Perform all lookups
+        kajabi_result = lookup_kajabi(email)
+        eventbrite_result = lookup_eventbrite(email) 
+        klaviyo_result = lookup_klaviyo(email)
+        
+        # Format results
+        return jsonify({
+            'email': email,
+            'kajabi': {
+                'found': kajabi_result.found if hasattr(kajabi_result, 'found') else False,
+                'name': getattr(kajabi_result, 'name', None),
+                'logins': getattr(kajabi_result, 'logins', None),
+                'last_active': getattr(kajabi_result, 'last_active', None),
+                'offers': getattr(kajabi_result, 'offers', []),
+                'tags': getattr(kajabi_result, 'tags', []),
+                'summary': getattr(kajabi_result, 'summary', 'Not found')
+            },
+            'eventbrite': {
+                'found': eventbrite_result.found if hasattr(eventbrite_result, 'found') else False,
+                'orders': [{
+                    'event_name': order.get('event_name', ''),
+                    'event_date': order.get('event_date', ''),
+                    'ticket_type': order.get('ticket_type', ''),
+                    'status': order.get('status', '')
+                } for order in getattr(eventbrite_result, 'orders', [])],
+                'summary': getattr(eventbrite_result, 'summary', 'No orders found')
+            },
+            'klaviyo': {
+                'found': 'Not found' not in klaviyo_result,
+                'summary': klaviyo_result,
+                # Parse basic info if available
+                'name': None,  # Could parse from result string
+                'created': None,
+                'lists': []
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': f'Lookup failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
