@@ -743,6 +743,7 @@ def lookup_user():
     try:
         import requests
         import csv
+        import os
         
         # API credentials
         EB_TOKEN = "NVPWHF7QOKK74KQ6ZF3W"
@@ -751,10 +752,33 @@ def lookup_user():
         
         results = {
             'email': email,
-            'kajabi': {'found': False, 'summary': 'API not available in dashboard mode'},
+            'kajabi': {'found': False, 'summary': 'Not found', 'name': None, 'products': [], 'status': None},
             'eventbrite': {'found': False, 'orders': [], 'summary': 'No orders found'},
             'klaviyo': {'found': False, 'summary': 'Not found'}
         }
+        
+        # Kajabi CSV lookup
+        try:
+            kajabi_csv_path = "/Users/robotclaw/.openclaw/media/inbound/kajabi_contacts_latest.csv"
+            
+            with open(kajabi_csv_path, 'r', encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get('email', '').strip().lower() == email:
+                        name = row.get('name', '').strip()
+                        subscribed = row.get('subscribed', '').strip() == 'True'
+                        created = row.get('created_at', '')[:10] if row.get('created_at') else ''
+                        
+                        results['kajabi'] = {
+                            'found': True,
+                            'name': name,
+                            'subscribed': subscribed,
+                            'created': created,
+                            'summary': f"Found in Kajabi: {name} ({'subscribed' if subscribed else 'unsubscribed'}) since {created}"
+                        }
+                        break
+        except Exception as e:
+            results['kajabi']['summary'] = f"Kajabi CSV error: {str(e)[:50]}"
         
         # Eventbrite lookup
         try:
