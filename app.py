@@ -274,6 +274,35 @@ def dashboard():
         }
         .not-found { color: #999; font-style: italic; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .inline-edit-form { 
+            display: none; margin-top: 12px; padding: 12px; background: #f8f9fa; 
+            border-radius: 8px; border: 2px solid #007AFF;
+        }
+        .inline-edit-form.active { display: block; }
+        .edit-textarea {
+            width: 100%; min-height: 120px; padding: 12px; border: 1px solid #ddd;
+            border-radius: 6px; font-family: inherit; font-size: 14px; line-height: 1.5;
+            resize: vertical;
+        }
+        .edit-actions {
+            display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end;
+        }
+        .btn-small {
+            padding: 6px 12px; border-radius: 4px; border: none;
+            font-weight: 500; color: white; cursor: pointer; font-size: 12px;
+        }
+        .btn-save { background: #34C759; }
+        .btn-cancel { background: #666; }
+        .escalation-form {
+            display: none; margin-top: 12px; padding: 12px; background: #fff3cd;
+            border-radius: 8px; border: 2px solid #FF9500;
+        }
+        .escalation-form.active { display: block; }
+        .escalation-textarea {
+            width: 100%; height: 80px; padding: 8px; border: 1px solid #ddd;
+            border-radius: 4px; font-family: inherit; font-size: 13px;
+        }
+        .escalation-note { font-size: 12px; color: #856404; margin-bottom: 8px; }
         .live-indicator {
             position: fixed; top: 16px; right: 16px; background: #34C759;
             color: white; padding: 6px 10px; border-radius: 16px; font-size: 11px; font-weight: 600;
@@ -328,12 +357,31 @@ def dashboard():
             <div class="reply">
                 <h4>AI Draft Reply</h4>
                 <p class="draft-preview">{{ draft.draft_body }}</p>
+                
+                <!-- Inline Edit Form -->
+                <div class="inline-edit-form" id="edit-form-{{ draft.id }}">
+                    <textarea class="edit-textarea" id="edit-text-{{ draft.id }}" placeholder="Edit the draft response...">{{ draft.draft_body }}</textarea>
+                    <div class="edit-actions">
+                        <button class="btn-small btn-save" onclick="saveEdit('{{ draft.id }}')">Save & Approve</button>
+                        <button class="btn-small btn-cancel" onclick="cancelEdit('{{ draft.id }}')">Cancel</button>
+                    </div>
+                </div>
+                
+                <!-- Inline Escalation Form -->
+                <div class="escalation-form" id="escalation-form-{{ draft.id }}">
+                    <div class="escalation-note">⚠️ Escalating to human review - add notes below:</div>
+                    <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Why does this need human attention? (optional)"></textarea>
+                    <div class="edit-actions">
+                        <button class="btn-small" style="background: #FF9500;" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
+                        <button class="btn-small btn-cancel" onclick="cancelEscalation('{{ draft.id }}')">Cancel</button>
+                    </div>
+                </div>
             </div>
             
             <div class="actions">
                 <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
-                <button class="btn btn-edit" onclick="editDraft('{{ draft.id }}')">Edit</button>
-                <button class="btn btn-escalate" onclick="escalateDraft('{{ draft.id }}')">Escalate</button>
+                <button class="btn btn-edit" onclick="showEditForm('{{ draft.id }}')">Edit</button>
+                <button class="btn btn-escalate" onclick="showEscalationForm('{{ draft.id }}')">Escalate</button>
                 <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
             </div>
         </div>
@@ -439,8 +487,29 @@ function rejectDraft(id) {
   });
 }
 
-function escalateDraft(id) {
-  const notes = prompt('Escalation notes:') || '';
+function showEscalationForm(id) {
+  // Hide any other open forms first
+  document.querySelectorAll('.inline-edit-form.active, .escalation-form.active').forEach(form => {
+    form.classList.remove('active');
+  });
+  
+  const form = document.getElementById('escalation-form-' + id);
+  if (form) {
+    form.classList.add('active');
+    const textarea = document.getElementById('escalation-text-' + id);
+    if (textarea) textarea.focus();
+  }
+}
+
+function cancelEscalation(id) {
+  const form = document.getElementById('escalation-form-' + id);
+  if (form) form.classList.remove('active');
+}
+
+function saveEscalation(id) {
+  const textarea = document.getElementById('escalation-text-' + id);
+  const notes = textarea ? textarea.value.trim() : '';
+  
   apiPost('/api/drafts/' + id + '/escalate', { to: 'cassie', notes }).then(res => {
     if (res.ok) { 
       removeDraftCard(id); 
@@ -451,15 +520,38 @@ function escalateDraft(id) {
   });
 }
 
-function editDraft(id) {
-  const card = document.querySelector('[data-draft-id="' + id + '"]');
-  const preview = card ? card.querySelector('.draft-preview') : null;
-  const currentText = preview ? preview.textContent.trim() : '';
+function showEditForm(id) {
+  // Hide any other open forms first
+  document.querySelectorAll('.inline-edit-form.active, .escalation-form.active').forEach(form => {
+    form.classList.remove('active');
+  });
   
-  const newText = prompt('Edit draft reply:', currentText);
-  if (!newText || !newText.trim()) return;
+  const form = document.getElementById('edit-form-' + id);
+  if (form) {
+    form.classList.add('active');
+    const textarea = document.getElementById('edit-text-' + id);
+    if (textarea) {
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }
+  }
+}
+
+function cancelEdit(id) {
+  const form = document.getElementById('edit-form-' + id);
+  if (form) form.classList.remove('active');
+}
+
+function saveEdit(id) {
+  const textarea = document.getElementById('edit-text-' + id);
+  const newText = textarea ? textarea.value.trim() : '';
   
-  apiPost('/api/drafts/' + id + '/edit', { draft_text: newText.trim() }).then(res => {
+  if (!newText) {
+    toast('Draft text cannot be empty', 'error');
+    return;
+  }
+  
+  apiPost('/api/drafts/' + id + '/edit', { draft_text: newText }).then(res => {
     if (res.ok) { 
       removeDraftCard(id); 
       toast('Draft edited and approved!', 'success'); 
