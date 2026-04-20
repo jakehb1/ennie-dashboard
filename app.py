@@ -595,16 +595,25 @@ function renderLookupData(data) {
   html += '<h4>🏛 Kajabi</h4>';
   if (kajabi.found) {
     if (kajabi.name) html += `<div class="lookup-row"><span class="lookup-key">Name</span><span class="lookup-val">${kajabi.name}</span></div>`;
-    if (kajabi.logins) html += `<div class="lookup-row"><span class="lookup-key">Logins</span><span class="lookup-val">${kajabi.logins}</span></div>`;
-    if (kajabi.last_active) html += `<div class="lookup-row"><span class="lookup-key">Last Active</span><span class="lookup-val">${kajabi.last_active}</span></div>`;
-    if (kajabi.offers && kajabi.offers.length) {
-      html += '<div class="lookup-row"><span class="lookup-key">Offers</span><div class="tag-list">';
-      kajabi.offers.forEach(offer => html += `<span class="tag">${offer}</span>`);
-      html += '</div></div>';
+    if (kajabi.subscribed !== null) {
+      const status = kajabi.subscribed ? 'Subscribed' : 'Unsubscribed';
+      html += `<div class="lookup-row"><span class="lookup-key">Status</span><span class="lookup-val">${status}</span></div>`;
     }
-    if (kajabi.tags && kajabi.tags.length) {
-      html += '<div class="lookup-row"><span class="lookup-key">Tags</span><div class="tag-list">';
-      kajabi.tags.forEach(tag => html += `<span class="tag">${tag}</span>`);
+    if (kajabi.created) html += `<div class="lookup-row"><span class="lookup-key">Member Since</span><span class="lookup-val">${kajabi.created}</span></div>`;
+    
+    if (kajabi.products && kajabi.products.length) {
+      html += '<div class="lookup-row"><span class="lookup-key">Courses</span><div>';
+      kajabi.products.forEach(product => {
+        html += `<div style="margin-bottom: 8px; padding: 8px; background: #f0f8ff; border-radius: 6px;">`;
+        html += `<div style="font-weight: 600; margin-bottom: 4px;">${product.name}</div>`;
+        html += `<div style="font-size: 13px; color: #666;">`;
+        html += `Progress: <strong>${product.progress}</strong> • `;
+        html += `Logins: <strong>${product.logins}</strong>`;
+        if (product.last_activity) {
+          html += ` • Last active: ${product.last_activity}`;
+        }
+        html += '</div></div>';
+      });
       html += '</div></div>';
     }
   } else {
@@ -757,7 +766,8 @@ def lookup_user():
             'klaviyo': {'found': False, 'summary': 'Not found'}
         }
         
-        # Kajabi CSV lookup
+        # Kajabi CSV lookup - contact info
+        kajabi_contact = None
         try:
             kajabi_csv_path = "/Users/robotclaw/.openclaw/media/inbound/kajabi_contacts_latest.csv"
             
@@ -765,20 +775,62 @@ def lookup_user():
                 reader = csv.DictReader(f)
                 for row in reader:
                     if row.get('email', '').strip().lower() == email:
-                        name = row.get('name', '').strip()
-                        subscribed = row.get('subscribed', '').strip() == 'True'
-                        created = row.get('created_at', '')[:10] if row.get('created_at') else ''
-                        
-                        results['kajabi'] = {
-                            'found': True,
-                            'name': name,
-                            'subscribed': subscribed,
-                            'created': created,
-                            'summary': f"Found in Kajabi: {name} ({'subscribed' if subscribed else 'unsubscribed'}) since {created}"
-                        }
+                        kajabi_contact = row
                         break
-        except Exception as e:
-            results['kajabi']['summary'] = f"Kajabi CSV error: {str(e)[:50]}"
+        except Exception:
+            pass
+        
+        # Kajabi Product Progress lookup  
+        kajabi_products = []
+        try:
+            progress_csv_path = "/Users/robotclaw/.openclaw/media/inbound/ProductProgressReport_Site_2147522759_Product_2149292408_1bc---15124abe-056f-4731-a8fe-bc0103d0df35.csv"
+            
+            with open(progress_csv_path, 'r', encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get('Email', '').strip().lower() == email:
+                        progress = row.get('Product Progress', '0')
+                        logins = row.get('Logins', '0') 
+                        start_date = row.get('Start Date', '')
+                        last_activity = row.get('Last Activity At', '')
+                        
+                        kajabi_products.append({
+                            'name': 'Energy Healing Course',  # This specific CSV is for one course
+                            'progress': f"{progress}%" if progress and progress != '0' else '0%',
+                            'logins': logins,
+                            'start_date': start_date,
+                            'last_activity': last_activity
+                        })
+                        break
+        except Exception:
+            pass
+        
+        # Combine Kajabi data
+        if kajabi_contact or kajabi_products:
+            name = kajabi_contact.get('name', '').strip() if kajabi_contact else 'Unknown'
+            subscribed = kajabi_contact.get('subscribed', '').strip() == 'True' if kajabi_contact else False
+            created = kajabi_contact.get('created_at', '')[:10] if kajabi_contact and kajabi_contact.get('created_at') else ''
+            
+            summary_parts = []
+            if kajabi_contact:
+                summary_parts.append(f"{name} ({'subscribed' if subscribed else 'unsubscribed'})")
+                if created:
+                    summary_parts.append(f"member since {created}")
+            
+            if kajabi_products:
+                for product in kajabi_products:
+                    summary_parts.append(f"{product['name']}: {product['progress']} progress, {product['logins']} logins")
+            
+            results['kajabi'] = {
+                'found': True,
+                'name': name,
+                'subscribed': subscribed if kajabi_contact else None,
+                'created': created,
+                'products': kajabi_products,
+                'summary': " • ".join(summary_parts) if summary_parts else "Found in Kajabi"
+            }
+        else:
+            results['kajabi']['summary'] = f"Not found in Kajabi records"
         
         # Eventbrite lookup
         try:
