@@ -736,55 +736,85 @@ def edit_draft(draft_id):
 @app.route('/api/lookup', methods=['GET'])
 def lookup_user():
     """Look up user across Kajabi, Eventbrite, and Klaviyo."""
-    email = request.args.get('email', '').strip()
+    email = request.args.get('email', '').strip().lower()
     if not email:
         return jsonify({'error': 'Email parameter required'}), 400
     
     try:
-        # Import lookup functions from support agent
-        import sys, os
-        # Add the parent directory to path to import support_agent
-        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if parent_dir not in sys.path:
-            sys.path.insert(0, parent_dir)
-        from support_agent import lookup_kajabi, lookup_eventbrite, lookup_klaviyo
+        import requests
+        import csv
         
-        # Perform all lookups
-        kajabi_result = lookup_kajabi(email)
-        eventbrite_result = lookup_eventbrite(email) 
-        klaviyo_result = lookup_klaviyo(email)
+        # API credentials
+        EB_TOKEN = "NVPWHF7QOKK74KQ6ZF3W"
+        EB_ORG_ID = "393488177349"
+        KLAVIYO_API_KEY = "pk_8e0b3f093dfe5ae54a37b15fad3d2f513e"
         
-        # Format results
-        return jsonify({
+        results = {
             'email': email,
-            'kajabi': {
-                'found': kajabi_result.found if hasattr(kajabi_result, 'found') else False,
-                'name': getattr(kajabi_result, 'name', None),
-                'logins': getattr(kajabi_result, 'logins', None),
-                'last_active': getattr(kajabi_result, 'last_active', None),
-                'offers': getattr(kajabi_result, 'offers', []),
-                'tags': getattr(kajabi_result, 'tags', []),
-                'summary': getattr(kajabi_result, 'summary', 'Not found')
-            },
-            'eventbrite': {
-                'found': eventbrite_result.found if hasattr(eventbrite_result, 'found') else False,
-                'orders': [{
-                    'event_name': order.get('event_name', ''),
-                    'event_date': order.get('event_date', ''),
-                    'ticket_type': order.get('ticket_type', ''),
-                    'status': order.get('status', '')
-                } for order in getattr(eventbrite_result, 'orders', [])],
-                'summary': getattr(eventbrite_result, 'summary', 'No orders found')
-            },
-            'klaviyo': {
-                'found': 'Not found' not in klaviyo_result,
-                'summary': klaviyo_result,
-                # Parse basic info if available
-                'name': None,  # Could parse from result string
-                'created': None,
-                'lists': []
+            'kajabi': {'found': False, 'summary': 'API not available in dashboard mode'},
+            'eventbrite': {'found': False, 'orders': [], 'summary': 'No orders found'},
+            'klaviyo': {'found': False, 'summary': 'Not found'}
+        }
+        
+        # Eventbrite lookup
+        try:
+            headers = {"Authorization": f"Bearer {EB_TOKEN}"}
+            r = requests.get(
+                f"https://www.eventbriteapi.com/v3/organizations/{EB_ORG_ID}/orders/",
+                headers=headers,
+                params={"only_emails": email, "expand": "event,attendees"},
+                timeout=10
+            )
+            
+            if r.ok:
+                orders = []
+                for order in r.json().get("orders", []):
+                    if order.get("email", "").lower() == email:
+                        event = order.get("event", {})
+                        attendees = order.get("attendees", [])
+                        ticket_class = attendees[0].get("ticket_class_name", "General") if attendees else "General"
+                        
+                        orders.append({
+                            'event_name': event.get("name", {}).get("text", "Unknown Event"),
+                            'event_date': event.get("start", {}).get("local", "")[:10],
+                            'ticket_type': ticket_class,
+                            'status': order.get("status", "unknown")
+                        })
+                
+                if orders:
+                    results['eventbrite'] = {
+                        'found': True,
+                        'orders': orders,
+                        'summary': f"Found {len(orders)} event registration(s)"
+                    }
+        except Exception as e:
+            results['eventbrite']['summary'] = f"Eventbrite error: {str(e)[:50]}"
+        
+        # Klaviyo lookup
+        try:
+            headers = {
+                "Authorization": f"Klaviyo-API-Key {KLAVIYO_API_KEY}",
+                "revision": "2024-02-15"
             }
-        })
+            r = requests.get("https://a.klaviyo.com/api/profiles/",
+                headers=headers,
+                params={"filter": f'equals(email,"{email}")'},
+                timeout=8)
+                
+            if r.ok and r.json().get("data"):
+                profile = r.json()["data"][0]
+                attrs = profile["attributes"]
+                name = f"{attrs.get('first_name','')} {attrs.get('last_name','')}".strip()
+                created = attrs.get("created", "")[:10]
+                
+                results['klaviyo'] = {
+                    'found': True,
+                    'summary': f"Found in Klaviyo: {name} (subscribed {created})"
+                }
+        except Exception as e:
+            results['klaviyo']['summary'] = f"Klaviyo error: {str(e)[:50]}"
+        
+        return jsonify(results)
     except Exception as e:
         return jsonify({'error': f'Lookup failed: {str(e)}'}), 500
 
