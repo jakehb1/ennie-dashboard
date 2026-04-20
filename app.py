@@ -268,7 +268,7 @@ def dashboard():
         </div>
         
         {% for draft in drafts %}
-        <div class="draft-card">
+        <div class="draft-card" data-draft-id="{{ draft.id }}">
             <div class="draft-header">
                 <div class="contact">
                     <h3>{{ draft.from_name }}</h3>
@@ -287,21 +287,212 @@ def dashboard():
             
             <div class="reply">
                 <h4>AI Draft Reply</h4>
-                <p>{{ draft.draft_body }}</p>
+                <p class="draft-preview">{{ draft.draft_body }}</p>
             </div>
             
             <div class="actions">
-                <button class="btn btn-approve">Approve</button>
-                <button class="btn btn-edit">Edit</button>
-                <button class="btn btn-escalate">Escalate</button>
-                <button class="btn btn-reject">Reject</button>
+                <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
+                <button class="btn btn-edit" onclick="editDraft('{{ draft.id }}')">Edit</button>
+                <button class="btn btn-escalate" onclick="escalateDraft('{{ draft.id }}')">Escalate</button>
+                <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
             </div>
         </div>
         {% endfor %}
     </div>
+    
+    <script>
+/* ── Draft actions ──────────────────────────────────────────────────────── */
+
+// ── Toast notifications ──────────────────────────────────────────────────────
+function toast(message, type) {
+  const el = document.createElement('div');
+  el.textContent = message;
+  el.className = 'toast' + (type ? ' toast-' + type : '');
+  el.style.cssText = `
+    position: fixed; top: 20px; right: 20px; z-index: 1000;
+    background: #333; color: white; padding: 12px 16px;
+    border-radius: 8px; font-size: 14px; font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    transition: all 0.3s ease; opacity: 0; transform: translateY(-20px);
+  `;
+  if (type === 'success') el.style.background = '#34C759';
+  if (type === 'error') el.style.background = '#FF3B30';
+  
+  document.body.appendChild(el);
+  requestAnimationFrame(() => {
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  });
+  
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-20px)';
+    setTimeout(() => el.remove(), 300);
+  }, 3000);
+}
+
+// ── API helpers ──────────────────────────────────────────────────────────────
+async function apiPost(url, data) {
+  const r = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(data || {}),
+  });
+  return r.json();
+}
+
+// ── Draft card removal ───────────────────────────────────────────────────────
+function removeDraftCard(id) {
+  const card = document.querySelector('[data-draft-id="' + id + '"]');
+  if (!card) return;
+  card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+  card.style.opacity = '0';
+  card.style.transform = 'translateX(20px)';
+  setTimeout(() => {
+    card.remove();
+    // Check if no drafts left
+    const remaining = document.querySelectorAll('.draft-card').length;
+    if (remaining === 0) {
+      location.reload(); // Refresh to show updated stats
+    }
+  }, 300);
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function approveDraft(id) {
+  apiPost('/api/drafts/' + id + '/approve').then(res => {
+    if (res.ok) { 
+      removeDraftCard(id); 
+      toast('Draft approved and ready to send!', 'success'); 
+    } else { 
+      toast('Error: ' + (res.error || 'Something went wrong'), 'error'); 
+    }
+  }).catch(() => toast('Network error', 'error'));
+}
+
+function rejectDraft(id) {
+  const reason = prompt('Rejection reason (optional):') || '';
+  apiPost('/api/drafts/' + id + '/reject', { notes: reason }).then(res => {
+    if (res.ok) { 
+      removeDraftCard(id); 
+      toast('Draft rejected'); 
+    } else { 
+      toast('Error: ' + (res.error || 'Something went wrong'), 'error'); 
+    }
+  });
+}
+
+function escalateDraft(id) {
+  const notes = prompt('Escalation notes:') || '';
+  apiPost('/api/drafts/' + id + '/escalate', { to: 'cassie', notes }).then(res => {
+    if (res.ok) { 
+      removeDraftCard(id); 
+      toast('Escalated for human review', 'success'); 
+    } else { 
+      toast('Error: ' + (res.error || 'Something went wrong'), 'error'); 
+    }
+  });
+}
+
+function editDraft(id) {
+  const card = document.querySelector('[data-draft-id="' + id + '"]');
+  const preview = card ? card.querySelector('.draft-preview') : null;
+  const currentText = preview ? preview.textContent.trim() : '';
+  
+  const newText = prompt('Edit draft reply:', currentText);
+  if (!newText || !newText.trim()) return;
+  
+  apiPost('/api/drafts/' + id + '/edit', { draft_text: newText.trim() }).then(res => {
+    if (res.ok) { 
+      removeDraftCard(id); 
+      toast('Draft edited and approved!', 'success'); 
+    } else { 
+      toast('Error: ' + (res.error || 'Something went wrong'), 'error'); 
+    }
+  });
+}
+    </script>
 </body>
 </html>
     ''', drafts=drafts, event_count=event_count, healing_count=healing_count)
+
+@app.route('/api/drafts/<draft_id>/approve', methods=['POST'])
+def approve_draft(draft_id):
+    """Approve a draft and mark it as approved."""
+    try:
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == draft_id:
+                draft['status'] = 'approved'
+                draft['approved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 'approved'})
+        return jsonify({'error': 'Draft not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/drafts/<draft_id>/reject', methods=['POST'])
+def reject_draft(draft_id):
+    """Reject a draft."""
+    try:
+        data = request.get_json() or {}
+        notes = data.get('notes', '')
+        
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == draft_id:
+                draft['status'] = 'rejected'
+                draft['rejected_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                draft['rejection_notes'] = notes
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 'rejected'})
+        return jsonify({'error': 'Draft not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/drafts/<draft_id>/escalate', methods=['POST'])
+def escalate_draft(draft_id):
+    """Escalate a draft to human review."""
+    try:
+        data = request.get_json() or {}
+        notes = data.get('notes', '')
+        to = data.get('to', 'cassie')
+        
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == draft_id:
+                draft['status'] = 'escalated'
+                draft['escalated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                draft['escalation_notes'] = notes
+                draft['escalated_to'] = to
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 'escalated'})
+        return jsonify({'error': 'Draft not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/drafts/<draft_id>/edit', methods=['POST'])
+def edit_draft(draft_id):
+    """Edit and approve a draft."""
+    try:
+        data = request.get_json() or {}
+        draft_text = data.get('draft_text', '').strip()
+        
+        if not draft_text:
+            return jsonify({'error': 'Draft text required'}), 400
+        
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == draft_id:
+                draft['draft_body'] = draft_text
+                draft['status'] = 'approved'
+                draft['edited_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                draft['approved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 'edited_and_approved'})
+        return jsonify({'error': 'Draft not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
