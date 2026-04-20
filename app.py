@@ -743,7 +743,10 @@ def lookup_user():
     try:
         # Import lookup functions from support agent
         import sys, os
-        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+        # Add the parent directory to path to import support_agent
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
         from support_agent import lookup_kajabi, lookup_eventbrite, lookup_klaviyo
         
         # Perform all lookups
