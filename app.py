@@ -757,7 +757,7 @@ def lookup_user():
         # API credentials
         EB_TOKEN = "NVPWHF7QOKK74KQ6ZF3W"
         EB_ORG_ID = "393488177349"
-        KLAVIYO_API_KEY = "pk_8e0b3f093dfe5ae54a37b15fad3d2f513e"
+        KLAVIYO_API_KEY = "pk_b426e39ad5065a9eed02cde3b28d0a46a0"
         
         results = {
             'email': email,
