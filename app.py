@@ -675,7 +675,24 @@ def api_test():
     """Test endpoint to verify API is working."""
     if request.method == 'POST':
         return jsonify({'method': 'POST', 'status': 'success'})
-    return jsonify({'method': 'GET', 'status': 'success'})
+    # Debug: check DB status
+    db_status = 'no DATABASE_URL'
+    db_count = 0
+    db_error = None
+    if DATABASE_URL:
+        db_status = 'configured'
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute('SELECT COUNT(*) FROM drafts')
+            db_count = cur.fetchone()[0]
+            cur.close()
+            conn.close()
+            db_status = 'connected'
+        except Exception as e:
+            db_error = str(e)[:200]
+            db_status = 'error'
+    return jsonify({'method': 'GET', 'status': 'success', 'db_status': db_status, 'db_count': db_count, 'db_error': db_error})
 
 @app.route('/support')
 def support_view():
