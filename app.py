@@ -17,9 +17,9 @@ app.secret_key = os.environ.get('SECRET_KEY', 'ennie-support-' + hashlib.sha256(
 
 # ── Admin users (username → PIN) ──────────────────────────────────────────────
 ADMIN_USERS = {
-    'jakeh':   os.environ.get('PIN_JAKEH',   '1642'),
-    'casey':   os.environ.get('PIN_CASEY',   '3941'),
-    'charlie': os.environ.get('PIN_CHARLIE', '4521'),
+    'jakeh':   os.environ.get('PIN_JAKEH',   '1234'),
+    'casey':   os.environ.get('PIN_CASEY',   '1234'),
+    'charlie': os.environ.get('PIN_CHARLIE', '1234'),
 }
 
 ADMIN_DISPLAY = {
