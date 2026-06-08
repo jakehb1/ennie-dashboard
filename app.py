@@ -692,7 +692,10 @@ def api_test():
         except Exception as e:
             db_error = str(e)[:200]
             db_status = 'error'
-    return jsonify({'method': 'GET', 'status': 'success', 'db_status': db_status, 'db_count': db_count, 'db_error': db_error, 'db_url_set': bool(DATABASE_URL), 'db_url_prefix': DATABASE_URL[:30] + '...' if DATABASE_URL else None})
+    # Show all env vars that start with DB or PG or RAILWAY or DATABASE
+    env_keys = [k for k in os.environ if any(p in k.upper() for p in ['DB', 'PG', 'DATABASE', 'POSTGRES'])]
+    env_hints = {k: os.environ[k][:20] + '...' for k in env_keys}
+    return jsonify({'method': 'GET', 'status': 'success', 'db_status': db_status, 'db_count': db_count, 'db_error': db_error, 'db_url_set': bool(DATABASE_URL), 'env_hints': env_hints})
 
 @app.route('/support')
 def support_view():
