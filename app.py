@@ -7,13 +7,74 @@ from flask import Flask, render_template_string, render_template, request, jsoni
 from functools import wraps
 import json
 import os
-import sqlite3
 import hashlib
 from datetime import datetime
 import uuid
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'ennie-support-' + hashlib.sha256(b'ennie2026').hexdigest()[:16])
+
+# ── Database ─────────────────────────────────────────────────────────────────
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+def get_db():
+    """Get a database connection."""
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = True
+    return conn
+
+def init_db():
+    """Create drafts table if it doesn't exist."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS drafts (
+            id TEXT PRIMARY KEY,
+            thread_id TEXT DEFAULT '',
+            message_id TEXT DEFAULT '',
+            from_email TEXT DEFAULT '',
+            from_name TEXT DEFAULT '',
+            subject TEXT DEFAULT '',
+            body_original TEXT DEFAULT '',
+            draft_body TEXT DEFAULT '',
+            original_draft_body TEXT DEFAULT '',
+            classification TEXT DEFAULT '',
+            status TEXT DEFAULT 'pending',
+            escalate BOOLEAN DEFAULT FALSE,
+            escalation_reason TEXT DEFAULT '',
+            escalation_notes TEXT DEFAULT '',
+            escalated_to TEXT DEFAULT '',
+            escalated_at TEXT DEFAULT '',
+            escalation_response TEXT DEFAULT '',
+            rejection_notes TEXT DEFAULT '',
+            committee_model TEXT DEFAULT '',
+            committee_confidence TEXT DEFAULT '',
+            was_edited BOOLEAN DEFAULT FALSE,
+            created_at TEXT DEFAULT '',
+            approved_at TEXT DEFAULT '',
+            edited_at TEXT DEFAULT '',
+            rejected_at TEXT DEFAULT '',
+            resolved_at TEXT DEFAULT '',
+            re_escalated_at TEXT DEFAULT '',
+            sent_at TEXT DEFAULT '',
+            data JSONB DEFAULT '{}'
+        )
+    ''')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_drafts_status ON drafts(status)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_drafts_thread_id ON drafts(thread_id)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_drafts_message_id ON drafts(message_id)')
+    cur.close()
+    conn.close()
+
+# Initialize on startup
+if DATABASE_URL:
+    try:
+        init_db()
+        print('✅ Postgres connected and drafts table ready')
+    except Exception as e:
+        print(f'⚠️ Postgres init failed: {e}')
 
 # ── Admin users (username → PIN) ──────────────────────────────────────────────
 ADMIN_USERS = {
@@ -39,23 +100,144 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# Persistent storage — use /data volume on Railway, fallback to /tmp
-DATA_DIR = os.environ.get('DATA_DIR', '/data' if os.path.isdir('/data') else '/tmp')
-os.makedirs(DATA_DIR, exist_ok=True)
-DRAFTS_FILE = os.path.join(DATA_DIR, 'ennie_drafts.json')
-
 def load_drafts():
-    """Load drafts from JSON file."""
+    """Load all drafts from Postgres."""
     try:
-        with open(DRAFTS_FILE, 'r') as f:
-            return json.load(f)
-    except:
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT * FROM drafts ORDER BY created_at DESC')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+        return rows
+    except Exception as e:
+        print(f'load_drafts error: {e}')
         return []
 
-def save_drafts(drafts):
-    """Save drafts to JSON file."""
-    with open(DRAFTS_FILE, 'w') as f:
-        json.dump(drafts, f, indent=2)
+def save_draft(draft):
+    """Insert or update a single draft in Postgres."""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO drafts (id, thread_id, message_id, from_email, from_name, subject,
+                body_original, draft_body, original_draft_body, classification, status,
+                escalate, escalation_reason, escalation_notes, escalated_to, escalated_at,
+                escalation_response, rejection_notes, committee_model, committee_confidence,
+                was_edited, created_at, approved_at, edited_at, rejected_at, resolved_at,
+                re_escalated_at, sent_at)
+            VALUES (%(id)s, %(thread_id)s, %(message_id)s, %(from_email)s, %(from_name)s,
+                %(subject)s, %(body_original)s, %(draft_body)s, %(original_draft_body)s,
+                %(classification)s, %(status)s, %(escalate)s, %(escalation_reason)s,
+                %(escalation_notes)s, %(escalated_to)s, %(escalated_at)s,
+                %(escalation_response)s, %(rejection_notes)s, %(committee_model)s,
+                %(committee_confidence)s, %(was_edited)s, %(created_at)s, %(approved_at)s,
+                %(edited_at)s, %(rejected_at)s, %(resolved_at)s, %(re_escalated_at)s, %(sent_at)s)
+            ON CONFLICT (id) DO UPDATE SET
+                status = EXCLUDED.status,
+                draft_body = EXCLUDED.draft_body,
+                original_draft_body = EXCLUDED.original_draft_body,
+                escalation_notes = EXCLUDED.escalation_notes,
+                escalated_to = EXCLUDED.escalated_to,
+                escalated_at = EXCLUDED.escalated_at,
+                escalation_response = EXCLUDED.escalation_response,
+                rejection_notes = EXCLUDED.rejection_notes,
+                was_edited = EXCLUDED.was_edited,
+                approved_at = EXCLUDED.approved_at,
+                edited_at = EXCLUDED.edited_at,
+                rejected_at = EXCLUDED.rejected_at,
+                resolved_at = EXCLUDED.resolved_at,
+                re_escalated_at = EXCLUDED.re_escalated_at,
+                sent_at = EXCLUDED.sent_at
+        ''', {
+            'id': draft.get('id', ''),
+            'thread_id': draft.get('thread_id', ''),
+            'message_id': draft.get('message_id', ''),
+            'from_email': draft.get('from_email', ''),
+            'from_name': draft.get('from_name', ''),
+            'subject': draft.get('subject', ''),
+            'body_original': draft.get('body_original', ''),
+            'draft_body': draft.get('draft_body', ''),
+            'original_draft_body': draft.get('original_draft_body', ''),
+            'classification': draft.get('classification', ''),
+            'status': draft.get('status', 'pending'),
+            'escalate': bool(draft.get('escalate', False)),
+            'escalation_reason': draft.get('escalation_reason', ''),
+            'escalation_notes': draft.get('escalation_notes', ''),
+            'escalated_to': draft.get('escalated_to', ''),
+            'escalated_at': draft.get('escalated_at', ''),
+            'escalation_response': draft.get('escalation_response', ''),
+            'rejection_notes': draft.get('rejection_notes', ''),
+            'committee_model': draft.get('committee_model', ''),
+            'committee_confidence': draft.get('committee_confidence', ''),
+            'was_edited': bool(draft.get('was_edited', False)),
+            'created_at': draft.get('created_at', ''),
+            'approved_at': draft.get('approved_at', ''),
+            'edited_at': draft.get('edited_at', ''),
+            'rejected_at': draft.get('rejected_at', ''),
+            'resolved_at': draft.get('resolved_at', ''),
+            're_escalated_at': draft.get('re_escalated_at', ''),
+            'sent_at': draft.get('sent_at', ''),
+        })
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f'save_draft error: {e}')
+
+def update_draft(draft_id, updates):
+    """Update specific fields on a draft."""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        set_parts = []
+        vals = []
+        for k, v in updates.items():
+            set_parts.append(f'{k} = %s')
+            vals.append(v)
+        vals.append(draft_id)
+        cur.execute(f"UPDATE drafts SET {', '.join(set_parts)} WHERE id = %s", vals)
+        cur.close()
+        conn.close()
+        return cur.rowcount > 0
+    except Exception as e:
+        print(f'update_draft error: {e}')
+        return False
+
+def get_draft(draft_id):
+    """Get a single draft by ID."""
+    try:
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT * FROM drafts WHERE id = %s', (draft_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return dict(row) if row else None
+    except Exception as e:
+        print(f'get_draft error: {e}')
+        return None
+
+def draft_exists(thread_id=None, message_id=None):
+    """Check if a draft already exists by thread_id or message_id."""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        if thread_id:
+            cur.execute('SELECT 1 FROM drafts WHERE thread_id = %s LIMIT 1', (thread_id,))
+            if cur.fetchone():
+                cur.close(); conn.close()
+                return True
+        if message_id:
+            cur.execute('SELECT 1 FROM drafts WHERE message_id = %s LIMIT 1', (message_id,))
+            if cur.fetchone():
+                cur.close(); conn.close()
+                return True
+        cur.close()
+        conn.close()
+        return False
+    except Exception as e:
+        print(f'draft_exists error: {e}')
+        return False
 
 # Real support emails data
 real_emails = [
@@ -445,9 +627,7 @@ def webhook():
             'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         
-        drafts = load_drafts()
-        drafts.insert(0, new_draft)  # Add to front
-        save_drafts(drafts)
+        save_draft(new_draft)
         
         return jsonify({'id': draft_id, 'status': 'created'}), 201
     except Exception as e:
@@ -457,7 +637,6 @@ def webhook():
 def handle_drafts():
     """Handle both GET and POST for drafts."""
     if request.method == 'POST':
-        # Create new draft
         try:
             data = request.get_json() or {}
             draft_id = str(uuid.uuid4())
@@ -480,9 +659,7 @@ def handle_drafts():
                 'created_at': data.get('timestamp') or datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
-            drafts = load_drafts()
-            drafts.insert(0, new_draft)
-            save_drafts(drafts)
+            save_draft(new_draft)
             
             return jsonify({'id': draft_id, 'status': 'created'}), 201
         except Exception as e:
@@ -503,7 +680,7 @@ def api_test():
 @app.route('/support')
 def support_view():
     """Public support view — no login required, full actions (approve/edit/escalate)."""
-    all_drafts = load_drafts() or real_emails
+    all_drafts = load_drafts()
     
     status_filter = request.args.get('status', 'all')
     if status_filter == 'all':
@@ -528,7 +705,7 @@ def support_view():
 @login_required
 def dashboard():
     # Load ALL drafts
-    all_drafts = load_drafts() or real_emails
+    all_drafts = load_drafts()
     
     # Filter by status query param (default: show all)
     status_filter = request.args.get('status', 'all')
@@ -1112,96 +1289,83 @@ document.addEventListener('click', (e) => {
 @app.route('/api/drafts/<draft_id>/approve', methods=['POST'])
 @login_required
 def approve_draft(draft_id):
-    """Approve a draft as-is (no edits). Preserves original for learning."""
+    """Approve a draft as-is."""
     try:
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == draft_id:
-                # Preserve the AI draft as original (approved without edits)
-                if 'original_draft_body' not in draft:
-                    draft['original_draft_body'] = draft.get('draft_body', '')
-                draft['was_edited'] = False
-                draft['status'] = 'approved'
-                draft['approved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 'approved'})
-        return jsonify({'error': 'Draft not found'}), 404
+        draft = get_draft(draft_id)
+        if not draft:
+            return jsonify({'error': 'Draft not found'}), 404
+        updates = {
+            'was_edited': False,
+            'status': 'approved',
+            'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        if not draft.get('original_draft_body'):
+            updates['original_draft_body'] = draft.get('draft_body', '')
+        update_draft(draft_id, updates)
+        return jsonify({'ok': True, 'status': 'approved'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/drafts/<draft_id>/reject', methods=['POST'])
 @login_required
 def reject_draft(draft_id):
-    """Reject a draft."""
     try:
         data = request.get_json() or {}
-        notes = data.get('notes', '')
-        
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == draft_id:
-                draft['status'] = 'rejected'
-                draft['rejected_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                draft['rejection_notes'] = notes
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 'rejected'})
-        return jsonify({'error': 'Draft not found'}), 404
+        if not get_draft(draft_id):
+            return jsonify({'error': 'Draft not found'}), 404
+        update_draft(draft_id, {
+            'status': 'rejected',
+            'rejected_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'rejection_notes': data.get('notes', ''),
+        })
+        return jsonify({'ok': True, 'status': 'rejected'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/drafts/<draft_id>/escalate', methods=['POST'])
 @login_required
 def escalate_draft(draft_id):
-    """Escalate a draft to human review."""
     try:
         data = request.get_json() or {}
-        notes = data.get('notes', '')
-        to = data.get('to', 'jakeh')
-        
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == draft_id:
-                draft['status'] = 'escalated'
-                draft['escalated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                draft['escalation_notes'] = notes
-                draft['escalated_to'] = to
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 'escalated'})
-        return jsonify({'error': 'Draft not found'}), 404
+        if not get_draft(draft_id):
+            return jsonify({'error': 'Draft not found'}), 404
+        update_draft(draft_id, {
+            'status': 'escalated',
+            'escalated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'escalation_notes': data.get('notes', ''),
+            'escalated_to': data.get('to', 'jakeh'),
+        })
+        return jsonify({'ok': True, 'status': 'escalated'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/drafts/<draft_id>/edit', methods=['POST'])
 @login_required
 def edit_draft(draft_id):
-    """Edit and approve a draft. Preserves original AI draft for learning."""
     try:
         data = request.get_json() or {}
         draft_text = data.get('draft_text', '').strip()
-        
         if not draft_text:
             return jsonify({'error': 'Draft text required'}), 400
-        
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == draft_id:
-                # Preserve original AI draft before overwriting
-                if 'original_draft_body' not in draft:
-                    draft['original_draft_body'] = draft.get('draft_body', '')
-                draft['draft_body'] = draft_text
-                draft['was_edited'] = True
-                draft['status'] = 'approved'
-                draft['edited_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                draft['approved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 'edited_and_approved'})
-        return jsonify({'error': 'Draft not found'}), 404
+        draft = get_draft(draft_id)
+        if not draft:
+            return jsonify({'error': 'Draft not found'}), 404
+        updates = {
+            'draft_body': draft_text,
+            'was_edited': True,
+            'status': 'approved',
+            'edited_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        if not draft.get('original_draft_body'):
+            updates['original_draft_body'] = draft.get('draft_body', '')
+        update_draft(draft_id, updates)
+        return jsonify({'ok': True, 'status': 'edited_and_approved'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/approved-drafts', methods=['GET'])
 def get_approved_drafts():
-    """Return drafts that are approved but not yet sent."""
     drafts = load_drafts()
     approved = [d for d in drafts if d.get('status') == 'approved']
     return jsonify(approved)
@@ -1209,25 +1373,21 @@ def get_approved_drafts():
 @app.route('/api/drafts/<draft_id>/mark-sent', methods=['POST'])
 @login_required
 def mark_draft_sent(draft_id):
-    """Mark a draft as sent after it's been emailed."""
     try:
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == draft_id:
-                draft['status'] = 'sent'
-                draft['sent_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 'sent'})
-        return jsonify({'error': 'Draft not found'}), 404
+        if not get_draft(draft_id):
+            return jsonify({'error': 'Draft not found'}), 404
+        update_draft(draft_id, {
+            'status': 'sent',
+            'sent_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        })
+        return jsonify({'ok': True, 'status': 'sent'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/sent-examples', methods=['GET'])
 def get_sent_examples():
-    """Return sent drafts with original email + final response for learning.
-    Includes both edited and unedited sent drafts.
-    Query params: limit (default 20), edited_only (default false)
-    """
+    """Return sent drafts for learning."""
+    """Query params: limit (default 20), edited_only (default false)"""
     limit = request.args.get('limit', 20, type=int)
     edited_only = request.args.get('edited_only', 'false').lower() == 'true'
     
@@ -1449,41 +1609,35 @@ def escalations_page():
 @app.route('/api/escalations/<esc_id>/respond', methods=['POST'])
 @login_required
 def respond_escalation(esc_id):
-    """Respond to an escalation and mark it resolved."""
     try:
         data = request.get_json() or {}
         response = data.get('response', '').strip()
         if not response:
             return jsonify({'error': 'Response text required'}), 400
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == esc_id:
-                draft['status'] = 'resolved'
-                draft['escalation_response'] = response
-                draft['resolved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 'resolved'})
-        return jsonify({'error': 'Escalation not found'}), 404
+        if not get_draft(esc_id):
+            return jsonify({'error': 'Escalation not found'}), 404
+        update_draft(esc_id, {
+            'status': 'resolved',
+            'escalation_response': response,
+            'resolved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        })
+        return jsonify({'ok': True, 'status': 'resolved'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/escalations/<esc_id>/re-escalate', methods=['POST'])
 @login_required
 def re_escalate(esc_id):
-    """Re-escalate an existing escalation to a different person."""
     try:
         data = request.get_json() or {}
-        to = data.get('to', 'jakeh')
-        notes = data.get('notes', '')
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == esc_id:
-                draft['escalated_to'] = to
-                draft['escalation_notes'] = notes
-                draft['re_escalated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 're-escalated', 'to': to})
-        return jsonify({'error': 'Escalation not found'}), 404
+        if not get_draft(esc_id):
+            return jsonify({'error': 'Escalation not found'}), 404
+        update_draft(esc_id, {
+            'escalated_to': data.get('to', 'jakeh'),
+            'escalation_notes': data.get('notes', ''),
+            're_escalated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        })
+        return jsonify({'ok': True, 'status': 're-escalated', 'to': data.get('to', 'jakeh')})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1492,17 +1646,14 @@ def re_escalate(esc_id):
 @app.route('/api/support/<draft_id>/approve', methods=['POST'])
 def support_approve(draft_id):
     try:
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == draft_id:
-                if 'original_draft_body' not in draft:
-                    draft['original_draft_body'] = draft.get('draft_body', '')
-                draft['was_edited'] = False
-                draft['status'] = 'approved'
-                draft['approved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 'approved'})
-        return jsonify({'error': 'Draft not found'}), 404
+        draft = get_draft(draft_id)
+        if not draft:
+            return jsonify({'error': 'Draft not found'}), 404
+        updates = {'was_edited': False, 'status': 'approved', 'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        if not draft.get('original_draft_body'):
+            updates['original_draft_body'] = draft.get('draft_body', '')
+        update_draft(draft_id, updates)
+        return jsonify({'ok': True, 'status': 'approved'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1510,15 +1661,14 @@ def support_approve(draft_id):
 def support_reject(draft_id):
     try:
         data = request.get_json() or {}
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == draft_id:
-                draft['status'] = 'rejected'
-                draft['rejected_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                draft['rejection_notes'] = data.get('notes', '')
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 'rejected'})
-        return jsonify({'error': 'Draft not found'}), 404
+        if not get_draft(draft_id):
+            return jsonify({'error': 'Draft not found'}), 404
+        update_draft(draft_id, {
+            'status': 'rejected',
+            'rejected_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'rejection_notes': data.get('notes', ''),
+        })
+        return jsonify({'ok': True, 'status': 'rejected'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1526,16 +1676,15 @@ def support_reject(draft_id):
 def support_escalate(draft_id):
     try:
         data = request.get_json() or {}
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == draft_id:
-                draft['status'] = 'escalated'
-                draft['escalated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                draft['escalation_notes'] = data.get('notes', '')
-                draft['escalated_to'] = data.get('to', 'jakeh')
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 'escalated'})
-        return jsonify({'error': 'Draft not found'}), 404
+        if not get_draft(draft_id):
+            return jsonify({'error': 'Draft not found'}), 404
+        update_draft(draft_id, {
+            'status': 'escalated',
+            'escalated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'escalation_notes': data.get('notes', ''),
+            'escalated_to': data.get('to', 'jakeh'),
+        })
+        return jsonify({'ok': True, 'status': 'escalated'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1546,19 +1695,18 @@ def support_edit(draft_id):
         draft_text = data.get('draft_text', '').strip()
         if not draft_text:
             return jsonify({'error': 'Draft text required'}), 400
-        drafts = load_drafts()
-        for draft in drafts:
-            if draft.get('id') == draft_id:
-                if 'original_draft_body' not in draft:
-                    draft['original_draft_body'] = draft.get('draft_body', '')
-                draft['draft_body'] = draft_text
-                draft['was_edited'] = True
-                draft['status'] = 'approved'
-                draft['edited_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                draft['approved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                save_drafts(drafts)
-                return jsonify({'ok': True, 'status': 'edited_and_approved'})
-        return jsonify({'error': 'Draft not found'}), 404
+        draft = get_draft(draft_id)
+        if not draft:
+            return jsonify({'error': 'Draft not found'}), 404
+        updates = {
+            'draft_body': draft_text, 'was_edited': True, 'status': 'approved',
+            'edited_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        if not draft.get('original_draft_body'):
+            updates['original_draft_body'] = draft.get('draft_body', '')
+        update_draft(draft_id, updates)
+        return jsonify({'ok': True, 'status': 'edited_and_approved'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1580,17 +1728,12 @@ def bulk_import():
         if not emails:
             return jsonify({'error': 'No emails to import'}), 400
         
-        drafts = load_drafts()
-        existing_threads = {d.get('thread_id') for d in drafts if d.get('thread_id')}
-        existing_messages = {d.get('message_id') for d in drafts if d.get('message_id')}
-        
         imported = 0
         skipped = 0
         for email in emails:
-            # Skip duplicates
             tid = email.get('thread_id', '')
             mid = email.get('message_id', '')
-            if (tid and tid in existing_threads) or (mid and mid in existing_messages):
+            if draft_exists(thread_id=tid, message_id=mid):
                 skipped += 1
                 continue
             
@@ -1608,12 +1751,10 @@ def bulk_import():
                 'status': email.get('status', 'sent'),
                 'created_at': email.get('created_at') or email.get('timestamp') or datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             }
-            drafts.append(new_draft)
+            save_draft(new_draft)
             imported += 1
-            existing_threads.add(tid)
         
-        save_drafts(drafts)
-        return jsonify({'ok': True, 'imported': imported, 'skipped': skipped, 'total': len(drafts)})
+        return jsonify({'ok': True, 'imported': imported, 'skipped': skipped})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
