@@ -209,13 +209,27 @@ def api_test():
 @app.route('/')
 @login_required
 def dashboard():
-    # Load real drafts from file, fallback to demo data
-    file_drafts = [d for d in load_drafts() if d.get('status') == 'pending']
-    drafts = file_drafts if file_drafts else [d for d in real_emails if d['status'] == 'pending']
+    # Load ALL drafts
+    all_drafts = load_drafts() or real_emails
+    
+    # Filter by status query param (default: show all)
+    status_filter = request.args.get('status', 'all')
+    if status_filter == 'all':
+        drafts = all_drafts
+    else:
+        drafts = [d for d in all_drafts if d.get('status') == status_filter]
+    
+    # Sort: pending first, then by date descending
+    status_order = {'pending': 0, 'escalated': 1, 'approved': 2, 'sent': 3, 'rejected': 4, 'resolved': 5}
+    drafts.sort(key=lambda d: (status_order.get(d.get('status', ''), 99), d.get('created_at', '')), reverse=False)
     
     # Calculate stats
-    event_count = len([d for d in drafts if d.get('classification', '').find('event') >= 0])
-    healing_count = len([d for d in drafts if d.get('classification', '').find('healing') >= 0])
+    pending_count = len([d for d in all_drafts if d.get('status') == 'pending'])
+    escalated_count = len([d for d in all_drafts if d.get('status') == 'escalated'])
+    approved_count = len([d for d in all_drafts if d.get('status') in ('approved', 'sent')])
+    total_count = len(all_drafts)
+    event_count = len([d for d in all_drafts if d.get('classification', '').find('event') >= 0])
+    healing_count = len([d for d in all_drafts if d.get('classification', '').find('healing') >= 0])
     
     return render_template_string('''
 <!DOCTYPE html>
@@ -382,22 +396,34 @@ def dashboard():
 
         <div class="header">
             <h1>Ennie Support Dashboard</h1>
-            <p>{{ drafts|length }} Pending Drafts</p>
+            <p>{{ total_count }} total emails</p>
         </div>
         
         <div class="stats">
             <div class="stat-card">
-                <div class="stat-number">{{ drafts|length }}</div>
+                <div class="stat-number">{{ total_count }}</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ pending_count }}</div>
                 <div class="stat-label">Pending</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">{{ event_count }}</div>
-                <div class="stat-label">Events</div>
+                <div class="stat-number">{{ escalated_count }}</div>
+                <div class="stat-label">Escalated</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">{{ healing_count }}</div>
-                <div class="stat-label">Healing</div>
+                <div class="stat-number">{{ approved_count }}</div>
+                <div class="stat-label">Handled</div>
             </div>
+        </div>
+
+        <!-- Filter tabs -->
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+            <a href="/?status=all" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'all' %}background:#007AFF;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">All ({{ total_count }})</a>
+            <a href="/?status=pending" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'pending' %}background:#FF9500;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Pending ({{ pending_count }})</a>
+            <a href="/?status=escalated" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'escalated' %}background:#FF3B30;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Escalated ({{ escalated_count }})</a>
+            <a href="/?status=approved" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'approved' %}background:#34C759;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Handled ({{ approved_count }})</a>
         </div>
         
         {% for draft in drafts %}
@@ -408,7 +434,18 @@ def dashboard():
                     <div class="email">{{ draft.from_email }}</div>
                     <div class="time">{{ draft.created_at }}</div>
                 </div>
-                <div class="tag {{ draft.classification }}">{{ draft.classification.replace('_', ' ') }}</div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    {% set st = draft.status or 'pending' %}
+                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;
+                        {% if st == 'pending' %}background:#FFF3E0;color:#E65100;
+                        {% elif st == 'escalated' %}background:#FFEBEE;color:#C62828;
+                        {% elif st == 'approved' or st == 'sent' %}background:#E8F5E9;color:#2E7D32;
+                        {% elif st == 'rejected' %}background:#ECEFF1;color:#546E7A;
+                        {% elif st == 'resolved' %}background:#E3F2FD;color:#1565C0;
+                        {% else %}background:#f0f0f0;color:#666;
+                        {% endif %}">{{ st }}</span>
+                    <div class="tag {{ draft.classification }}">{{ draft.classification.replace('_', ' ') }}</div>
+                </div>
             </div>
             
             <div class="subject">{{ draft.subject }}</div>
@@ -447,12 +484,14 @@ def dashboard():
                 </div>
             </div>
             
+            {% if (draft.status or 'pending') == 'pending' %}
             <div class="actions">
                 <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
                 <button class="btn btn-edit" onclick="showEditForm('{{ draft.id }}')">Edit</button>
                 <button class="btn btn-escalate" onclick="showEscalationForm('{{ draft.id }}')">Escalate</button>
                 <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
             </div>
+            {% endif %}
         </div>
         {% endfor %}
         
@@ -746,7 +785,11 @@ document.addEventListener('click', (e) => {
     </script>
 </body>
 </html>
-    ''', drafts=drafts, event_count=event_count, healing_count=healing_count, display_name=session.get('display_name', 'Admin'))
+    ''', drafts=drafts, event_count=event_count, healing_count=healing_count,
+        display_name=session.get('display_name', 'Admin'),
+        total_count=total_count, pending_count=pending_count,
+        escalated_count=escalated_count, approved_count=approved_count,
+        status_filter=status_filter)
 
 @app.route('/api/drafts/<draft_id>/approve', methods=['POST'])
 @login_required
