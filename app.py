@@ -17,7 +17,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'ennie-support-' + hashlib.sha256(b'ennie2026').hexdigest()[:16])
 
 # ── Database ─────────────────────────────────────────────────────────────────
-DATABASE_URL = os.environ.get('DATABASE_URL', '')
+DATABASE_URL = os.environ.get('DATABASE_URL', '') or os.environ.get('DATABASE_PUBLIC_URL', '') or os.environ.get('DATABASE_PRIVATE_URL', '')
 
 def get_db():
     """Get a database connection."""
@@ -692,7 +692,7 @@ def api_test():
         except Exception as e:
             db_error = str(e)[:200]
             db_status = 'error'
-    return jsonify({'method': 'GET', 'status': 'success', 'db_status': db_status, 'db_count': db_count, 'db_error': db_error})
+    return jsonify({'method': 'GET', 'status': 'success', 'db_status': db_status, 'db_count': db_count, 'db_error': db_error, 'db_url_set': bool(DATABASE_URL), 'db_url_prefix': DATABASE_URL[:30] + '...' if DATABASE_URL else None})
 
 @app.route('/support')
 def support_view():
