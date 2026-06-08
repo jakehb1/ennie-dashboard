@@ -363,12 +363,26 @@ def dashboard():
 <body>
     <div class="live-indicator">LIVE</div>
     <div class="container">
-        <div class="header" style="display:flex;justify-content:space-between;align-items:flex-start;">
-            <div>
-                <h1>Ennie Support Dashboard</h1>
-                <p>Welcome, {{ display_name }} • {{ drafts|length }} Pending</p>
+        <!-- Nav bar -->
+        <nav style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px;border-bottom:1px solid #eee;margin-bottom:24px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:20px;">✦</span>
+                <span style="font-size:17px;font-weight:700;color:#1a1a1a;">Ennie Support</span>
             </div>
-            <a href="/logout" style="font-size:13px;color:#999;text-decoration:none;padding:6px 14px;border:1px solid #ddd;border-radius:8px;margin-top:4px;">Sign Out</a>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                <a href="/" style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:#007AFF;color:#fff;">Dashboard</a>
+                <a href="/escalations" style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:#f0f0f0;color:#333;">Escalations</a>
+                <a href="/lookup" style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:#f0f0f0;color:#333;">Lookup</a>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:13px;color:#666;">{{ display_name }}</span>
+                <a href="/logout" style="font-size:13px;color:#999;text-decoration:none;padding:6px 14px;border:1px solid #ddd;border-radius:8px;">Sign Out</a>
+            </div>
+        </nav>
+
+        <div class="header">
+            <h1>Ennie Support Dashboard</h1>
+            <p>{{ drafts|length }} Pending Drafts</p>
         </div>
         
         <div class="stats">
@@ -441,6 +455,18 @@ def dashboard():
             </div>
         </div>
         {% endfor %}
+        
+        {% if not drafts %}
+        <div style="text-align:center;padding:60px 20px;">
+            <div style="font-size:48px;margin-bottom:16px;">✓</div>
+            <h3 style="font-size:20px;font-weight:600;color:#1a1a1a;margin-bottom:8px;">All clear!</h3>
+            <p style="font-size:15px;color:#666;">No pending support drafts right now.</p>
+            <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;">
+                <a href="/escalations" style="padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;background:#FF9500;color:#fff;">View Escalations</a>
+                <a href="/lookup" style="padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;background:#f0f0f0;color:#333;">Lookup User</a>
+            </div>
+        </div>
+        {% endif %}
     </div>
     
     <!-- User Lookup Modal -->
