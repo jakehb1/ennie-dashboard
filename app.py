@@ -1034,11 +1034,24 @@ def inbox_page():
 @app.route('/escalations')
 @login_required
 def escalations_page():
-    """Render the escalations page using the Jinja2 template."""
-    from flask import render_template
+    """Render the escalations page. Default: show user's own. ?view=all for everything."""
     drafts = load_drafts()
     escalated = [d for d in drafts if d.get('status') == 'escalated']
-    return render_template('escalations.html', escalations=escalated)
+    
+    view = request.args.get('view', 'mine')
+    current_user = session.get('user', '')
+    
+    if view == 'all':
+        filtered = escalated
+    else:
+        filtered = [e for e in escalated if e.get('escalated_to', '').lower() == current_user]
+    
+    return render_template('escalations.html',
+                           escalations=filtered,
+                           all_escalations_count=len(escalated),
+                           my_escalations_count=len([e for e in escalated if e.get('escalated_to', '').lower() == current_user]),
+                           current_view=view,
+                           display_name=session.get('display_name', 'Admin'))
 
 @app.route('/api/escalations/<esc_id>/respond', methods=['POST'])
 @login_required

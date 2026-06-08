@@ -2,9 +2,29 @@
 {% block title %}Escalations{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <h1 class="page-title">Escalations</h1>
-  <p class="page-subtitle">{{ escalations|length }} open escalation{% if escalations|length != 1 %}s{% endif %} awaiting your response</p>
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h1 class="page-title">Escalations</h1>
+    <p class="page-subtitle">
+      {% if current_view == 'all' %}
+        {{ escalations|length }} total open escalation{% if escalations|length != 1 %}s{% endif %}
+      {% else %}
+        {{ escalations|length }} escalation{% if escalations|length != 1 %}s{% endif %} assigned to you
+      {% endif %}
+    </p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <a href="{{ url_for('escalations_page', view='mine') }}"
+       class="btn btn-sm {% if current_view != 'all' %}btn-primary{% else %}btn-secondary{% endif %}"
+       style="text-decoration:none;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;">
+      Mine ({{ my_escalations_count }})
+    </a>
+    <a href="{{ url_for('escalations_page', view='all') }}"
+       class="btn btn-sm {% if current_view == 'all' %}btn-primary{% else %}btn-secondary{% endif %}"
+       style="text-decoration:none;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;">
+      All ({{ all_escalations_count }})
+    </a>
+  </div>
 </div>
 
 {% if escalations %}
@@ -19,9 +39,14 @@
       <div style="font-size:14px;color:#3C3C43;margin-top:2px;">{{ e.subject }}</div>
       <div class="esc-meta">{{ e.sender_email }} · Escalated {{ e.created_at[:10] }}</div>
     </div>
-    {% if e.classification %}
-    <span class="classification-badge">{{ e.classification | replace('_', ' ') }}</span>
-    {% endif %}
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      {% if e.escalated_to %}
+      <span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(0,122,255,0.1);color:#007AFF;">→ {{ e.escalated_to | capitalize }}</span>
+      {% endif %}
+      {% if e.classification %}
+      <span class="classification-badge">{{ e.classification | replace('_', ' ') }}</span>
+      {% endif %}
+    </div>
   </div>
 
   <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);margin-bottom:5px;">Original email</div>
@@ -59,7 +84,13 @@
 <div class="glass-card empty-state">
   <div class="empty-state-icon">✓</div>
   <h3>No open escalations</h3>
-  <p>You're all caught up. Nothing needs your attention right now.</p>
+  <p>
+    {% if current_view != 'all' and all_escalations_count > 0 %}
+      Nothing assigned to you right now. <a href="{{ url_for('escalations_page', view='all') }}" style="color:var(--blue);">View all ({{ all_escalations_count }})</a>
+    {% else %}
+      You're all caught up. Nothing needs your attention right now.
+    {% endif %}
+  </p>
 </div>
 {% endif %}
 
