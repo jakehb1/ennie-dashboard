@@ -17,7 +17,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'ennie-support-' + hashlib.sha256(b'ennie2026').hexdigest()[:16])
 
 # ── Database ─────────────────────────────────────────────────────────────────
-DATABASE_URL = os.environ.get('DATABASE_URL', '') or os.environ.get('DATABASE_PUBLIC_URL', '') or os.environ.get('DATABASE_PRIVATE_URL', '')
+DATABASE_URL = os.environ.get('DATABASE_URL', '') or os.environ.get('DATABASE_PUBLIC_URL', '') or 'postgresql://postgres:yHwzkRYETfjYvUqFSEnPICfnuclpcRGP@acela.proxy.rlwy.net:24999/railway'
 
 def get_db():
     """Get a database connection."""
