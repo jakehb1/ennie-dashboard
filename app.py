@@ -176,16 +176,18 @@ def handle_drafts():
                 'id': draft_id,
                 'thread_id': data.get('thread_id', ''),
                 'message_id': data.get('message_id', ''),
-                'from_email': data.get('from_email', ''),
-                'from_name': data.get('from_name', ''),
+                'from_email': data.get('from_email') or data.get('sender_email', ''),
+                'from_name': data.get('from_name') or data.get('sender_name', ''),
                 'subject': data.get('subject', ''),
-                'body_original': data.get('body_original', ''),
-                'draft_body': data.get('draft_body', ''),
-                'classification': data.get('classification', ''),
+                'body_original': data.get('body_original') or data.get('original_content', ''),
+                'draft_body': data.get('draft_body') or data.get('draft_response', ''),
+                'classification': data.get('classification') or data.get('email_analysis', {}).get('category', ''),
                 'escalate': bool(data.get('escalate', False)),
                 'escalation_reason': data.get('escalation_reason', ''),
+                'committee_model': data.get('committee_model', ''),
+                'committee_confidence': data.get('committee_confidence', ''),
                 'status': 'pending',
-                'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                'created_at': data.get('timestamp') or datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
             drafts = load_drafts()
@@ -1168,6 +1170,61 @@ def re_escalate(esc_id):
                 save_drafts(drafts)
                 return jsonify({'ok': True, 'status': 're-escalated', 'to': to})
         return jsonify({'error': 'Escalation not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ── Bulk import endpoint (for backfill) ──────────────────────────────────────
+
+@app.route('/api/bulk-import', methods=['POST'])
+def bulk_import():
+    """Import multiple email records at once. Expects {emails: [...]}.
+    Protected by a simple token in header: X-Import-Token.
+    """
+    token = request.headers.get('X-Import-Token', '')
+    expected = os.environ.get('IMPORT_TOKEN', 'ennie-backfill-2026')
+    if token != expected:
+        return jsonify({'error': 'Invalid import token'}), 403
+    
+    try:
+        data = request.get_json() or {}
+        emails = data.get('emails', [])
+        if not emails:
+            return jsonify({'error': 'No emails to import'}), 400
+        
+        drafts = load_drafts()
+        existing_threads = {d.get('thread_id') for d in drafts if d.get('thread_id')}
+        existing_messages = {d.get('message_id') for d in drafts if d.get('message_id')}
+        
+        imported = 0
+        skipped = 0
+        for email in emails:
+            # Skip duplicates
+            tid = email.get('thread_id', '')
+            mid = email.get('message_id', '')
+            if (tid and tid in existing_threads) or (mid and mid in existing_messages):
+                skipped += 1
+                continue
+            
+            draft_id = str(uuid.uuid4())
+            new_draft = {
+                'id': draft_id,
+                'thread_id': tid,
+                'message_id': mid,
+                'from_email': email.get('from_email') or email.get('sender_email', ''),
+                'from_name': email.get('from_name') or email.get('sender_name', ''),
+                'subject': email.get('subject', ''),
+                'body_original': email.get('body_original') or email.get('original_content', ''),
+                'draft_body': email.get('draft_body') or email.get('draft_response', ''),
+                'classification': email.get('classification', ''),
+                'status': email.get('status', 'sent'),
+                'created_at': email.get('created_at') or email.get('timestamp') or datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            }
+            drafts.append(new_draft)
+            imported += 1
+            existing_threads.add(tid)
+        
+        save_drafts(drafts)
+        return jsonify({'ok': True, 'imported': imported, 'skipped': skipped, 'total': len(drafts)})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
