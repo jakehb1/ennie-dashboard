@@ -39,8 +39,10 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# Simple file-based storage for drafts (Railway-friendly)
-DRAFTS_FILE = os.path.join('/tmp', 'ennie_drafts.json')
+# Persistent storage — use /data volume on Railway, fallback to /tmp
+DATA_DIR = os.environ.get('DATA_DIR', '/data' if os.path.isdir('/data') else '/tmp')
+os.makedirs(DATA_DIR, exist_ok=True)
+DRAFTS_FILE = os.path.join(DATA_DIR, 'ennie_drafts.json')
 
 def load_drafts():
     """Load drafts from JSON file."""
