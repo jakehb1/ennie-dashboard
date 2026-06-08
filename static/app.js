@@ -119,21 +119,26 @@ function confirmReject() {
   });
 }
 
-// ── Escalate to Cassie ───────────────────────────────────────────────────────
+// ── Escalate (Jakeh / Casey / Charlie) ───────────────────────────────────────────────────────
+const ESCALATION_NAMES = { jakeh: 'Jakeh', casey: 'Casey', charlie: 'Charlie' };
+
 function escalateDraft(id) {
   const m = document.getElementById('escalate-modal');
   if (!m) return;
   m.dataset.draftId = id;
   document.getElementById('escalate-notes').value = '';
+  document.getElementById('escalate-to').value = 'jakeh';
   openModal('escalate-modal');
 }
 
 function confirmEscalate() {
   const m  = document.getElementById('escalate-modal');
   const id = m.dataset.draftId;
+  const to = document.getElementById('escalate-to').value;
   const notes = document.getElementById('escalate-notes').value;
-  apiPost('/api/drafts/' + id + '/escalate', { to: 'cassie', notes }).then(res => {
-    if (res.ok) { removeDraftCard(id); toast('Escalated to Cassie'); closeModal('escalate-modal'); }
+  const name = ESCALATION_NAMES[to] || to;
+  apiPost('/api/drafts/' + id + '/escalate', { to, notes }).then(res => {
+    if (res.ok) { removeDraftCard(id); toast('Escalated to ' + name); closeModal('escalate-modal'); }
     else        { toast('Something went wrong', 'error'); }
   });
 }
@@ -293,23 +298,30 @@ function confirmRespond() {
   });
 }
 
-// ── Escalation — escalate to Charlie ────────────────────────────────────────
-function escalateToCharlie(id) {
-  const m = document.getElementById('charlie-modal');
+// ── Escalation — Re-escalate ────────────────────────────────────────
+function reEscalate(id) {
+  const sel = document.getElementById('re-escalate-to-' + id);
+  const to = sel ? sel.value : 'jakeh';
+  const m = document.getElementById('re-escalate-modal');
   if (!m) return;
   m.dataset.escId = id;
-  document.getElementById('charlie-notes').value = '';
-  openModal('charlie-modal');
+  m.dataset.escalateTo = to;
+  const name = ESCALATION_NAMES[to] || to;
+  document.getElementById('re-escalate-title').textContent = 'Re-escalate to ' + name;
+  document.getElementById('re-escalate-notes').value = '';
+  openModal('re-escalate-modal');
 }
 
-function confirmCharlieEscalate() {
-  const m     = document.getElementById('charlie-modal');
+function confirmReEscalate() {
+  const m     = document.getElementById('re-escalate-modal');
   const id    = m.dataset.escId;
-  const notes = document.getElementById('charlie-notes').value;
-  apiPost('/api/escalations/' + id + '/escalate-to-charlie', { notes }).then(res => {
+  const to    = m.dataset.escalateTo;
+  const notes = document.getElementById('re-escalate-notes').value;
+  const name  = ESCALATION_NAMES[to] || to;
+  apiPost('/api/escalations/' + id + '/re-escalate', { to, notes }).then(res => {
     if (res.ok) {
-      toast('Escalated to Charlie');
-      closeModal('charlie-modal');
+      toast('Re-escalated to ' + name);
+      closeModal('re-escalate-modal');
       setTimeout(() => location.reload(), 420);
     } else {
       toast('Something went wrong', 'error');

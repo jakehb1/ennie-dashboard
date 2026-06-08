@@ -36,9 +36,16 @@
     <button class="btn btn-primary btn-sm" onclick="respondToEscalation({{ e.id }})">
       ✎ Write Response
     </button>
-    <button class="btn btn-purple btn-sm" onclick="escalateToCharlie({{ e.id }})">
-      ↑ Escalate to Charlie
-    </button>
+    <div style="display:inline-flex;align-items:center;gap:6px;">
+      <select id="re-escalate-to-{{ e.id }}" style="padding:6px 10px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;font-size:13px;background:#fff;">
+        <option value="jakeh">Jakeh</option>
+        <option value="casey">Casey</option>
+        <option value="charlie">Charlie</option>
+      </select>
+      <button class="btn btn-purple btn-sm" onclick="reEscalate({{ e.id }})">
+        ↑ Re-escalate
+      </button>
+    </div>
     <a href="{{ url_for('lookup') }}?email={{ e.sender_email }}"
        class="btn btn-secondary btn-sm">
       🔍 Lookup
@@ -72,17 +79,17 @@
   </div>
 </div>
 
-<!-- Escalate to Charlie Modal -->
-<div class="modal-overlay" id="charlie-modal">
+<!-- Re-escalate Modal -->
+<div class="modal-overlay" id="re-escalate-modal">
   <div class="modal">
-    <div class="modal-title">Escalate to Charlie</div>
+    <div class="modal-title" id="re-escalate-title">Re-escalate</div>
     <div class="form-group">
-      <label class="form-label">Notes for Charlie</label>
-      <textarea id="charlie-notes" placeholder="Explain why this needs Charlie's attention…"></textarea>
+      <label class="form-label">Notes</label>
+      <textarea id="re-escalate-notes" placeholder="Add context for the person you're escalating to…"></textarea>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('charlie-modal')">Cancel</button>
-      <button class="btn btn-purple" onclick="confirmCharlieEscalate()">Escalate to Charlie</button>
+      <button class="btn btn-secondary" onclick="closeModal('re-escalate-modal')">Cancel</button>
+      <button class="btn btn-purple" onclick="confirmReEscalate()">Re-escalate</button>
     </div>
   </div>
 </div>

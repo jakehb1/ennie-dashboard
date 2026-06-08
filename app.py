@@ -369,8 +369,13 @@ def dashboard():
                 
                 <!-- Inline Escalation Form -->
                 <div class="escalation-form" id="escalation-form-{{ draft.id }}">
-                    <div class="escalation-note">⚠️ Escalating to human review - add notes below:</div>
-                    <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Why does this need human attention? (optional)"></textarea>
+                    <div class="escalation-note">⚠️ Escalating — select who to send to:</div>
+                    <select id="escalation-to-{{ draft.id }}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-bottom:8px;">
+                        <option value="jakeh">Jakeh</option>
+                        <option value="casey">Casey</option>
+                        <option value="charlie">Charlie</option>
+                    </select>
+                    <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Add context (optional)"></textarea>
                     <div class="edit-actions">
                         <button class="btn-small" style="background: #FF9500;" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
                         <button class="btn-small btn-cancel" onclick="cancelEscalation('{{ draft.id }}')">Cancel</button>
@@ -507,13 +512,16 @@ function cancelEscalation(id) {
 }
 
 function saveEscalation(id) {
+  const select = document.getElementById('escalation-to-' + id);
+  const to = select ? select.value : 'jakeh';
   const textarea = document.getElementById('escalation-text-' + id);
   const notes = textarea ? textarea.value.trim() : '';
+  const names = { jakeh: 'Jakeh', casey: 'Casey', charlie: 'Charlie' };
   
-  apiPost('/api/drafts/' + id + '/escalate', { to: 'cassie', notes }).then(res => {
+  apiPost('/api/drafts/' + id + '/escalate', { to: to, notes: notes }).then(res => {
     if (res.ok) { 
       removeDraftCard(id); 
-      toast('Escalated for human review', 'success'); 
+      toast('Escalated to ' + (names[to] || to), 'success'); 
     } else { 
       toast('Error: ' + (res.error || 'Something went wrong'), 'error'); 
     }
@@ -666,11 +674,15 @@ document.addEventListener('click', (e) => {
 
 @app.route('/api/drafts/<draft_id>/approve', methods=['POST'])
 def approve_draft(draft_id):
-    """Approve a draft and mark it as approved."""
+    """Approve a draft as-is (no edits). Preserves original for learning."""
     try:
         drafts = load_drafts()
         for draft in drafts:
             if draft.get('id') == draft_id:
+                # Preserve the AI draft as original (approved without edits)
+                if 'original_draft_body' not in draft:
+                    draft['original_draft_body'] = draft.get('draft_body', '')
+                draft['was_edited'] = False
                 draft['status'] = 'approved'
                 draft['approved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 save_drafts(drafts)
@@ -704,7 +716,7 @@ def escalate_draft(draft_id):
     try:
         data = request.get_json() or {}
         notes = data.get('notes', '')
-        to = data.get('to', 'cassie')
+        to = data.get('to', 'jakeh')
         
         drafts = load_drafts()
         for draft in drafts:
@@ -721,7 +733,7 @@ def escalate_draft(draft_id):
 
 @app.route('/api/drafts/<draft_id>/edit', methods=['POST'])
 def edit_draft(draft_id):
-    """Edit and approve a draft."""
+    """Edit and approve a draft. Preserves original AI draft for learning."""
     try:
         data = request.get_json() or {}
         draft_text = data.get('draft_text', '').strip()
@@ -732,7 +744,11 @@ def edit_draft(draft_id):
         drafts = load_drafts()
         for draft in drafts:
             if draft.get('id') == draft_id:
+                # Preserve original AI draft before overwriting
+                if 'original_draft_body' not in draft:
+                    draft['original_draft_body'] = draft.get('draft_body', '')
                 draft['draft_body'] = draft_text
+                draft['was_edited'] = True
                 draft['status'] = 'approved'
                 draft['edited_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 draft['approved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -741,6 +757,60 @@ def edit_draft(draft_id):
         return jsonify({'error': 'Draft not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/approved-drafts', methods=['GET'])
+def get_approved_drafts():
+    """Return drafts that are approved but not yet sent."""
+    drafts = load_drafts()
+    approved = [d for d in drafts if d.get('status') == 'approved']
+    return jsonify(approved)
+
+@app.route('/api/drafts/<draft_id>/mark-sent', methods=['POST'])
+def mark_draft_sent(draft_id):
+    """Mark a draft as sent after it's been emailed."""
+    try:
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == draft_id:
+                draft['status'] = 'sent'
+                draft['sent_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 'sent'})
+        return jsonify({'error': 'Draft not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/sent-examples', methods=['GET'])
+def get_sent_examples():
+    """Return sent drafts with original email + final response for learning.
+    Includes both edited and unedited sent drafts.
+    Query params: limit (default 20), edited_only (default false)
+    """
+    limit = request.args.get('limit', 20, type=int)
+    edited_only = request.args.get('edited_only', 'false').lower() == 'true'
+    
+    drafts = load_drafts()
+    sent = [d for d in drafts if d.get('status') == 'sent']
+    
+    if edited_only:
+        sent = [d for d in sent if d.get('was_edited', False)]
+    
+    # Return most recent first, limited
+    examples = []
+    for d in sent[:limit]:
+        examples.append({
+            'id': d.get('id'),
+            'subject': d.get('subject', ''),
+            'from_email': d.get('from_email', ''),
+            'body_original': d.get('body_original', ''),
+            'classification': d.get('classification', ''),
+            'original_draft_body': d.get('original_draft_body', d.get('draft_body', '')),
+            'final_response': d.get('draft_body', ''),
+            'was_edited': d.get('was_edited', False),
+            'sent_at': d.get('sent_at', ''),
+        })
+    
+    return jsonify(examples)
 
 @app.route('/api/lookup', methods=['GET'])
 def lookup_user():
@@ -893,6 +963,63 @@ def lookup_user():
         return jsonify(results)
     except Exception as e:
         return jsonify({'error': f'Lookup failed: {str(e)}'}), 500
+
+# ── Template-based page routes ──────────────────────────────────────────────
+
+@app.route('/inbox')
+def inbox_page():
+    """Render the inbox page using the Jinja2 template."""
+    from flask import render_template
+    drafts = load_drafts()
+    pending = [d for d in drafts if d.get('status') == 'pending']
+    return render_template('inbox.html', drafts=pending)
+
+@app.route('/escalations')
+def escalations_page():
+    """Render the escalations page using the Jinja2 template."""
+    from flask import render_template
+    drafts = load_drafts()
+    escalated = [d for d in drafts if d.get('status') == 'escalated']
+    return render_template('escalations.html', escalations=escalated)
+
+@app.route('/api/escalations/<esc_id>/respond', methods=['POST'])
+def respond_escalation(esc_id):
+    """Respond to an escalation and mark it resolved."""
+    try:
+        data = request.get_json() or {}
+        response = data.get('response', '').strip()
+        if not response:
+            return jsonify({'error': 'Response text required'}), 400
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == esc_id:
+                draft['status'] = 'resolved'
+                draft['escalation_response'] = response
+                draft['resolved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 'resolved'})
+        return jsonify({'error': 'Escalation not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/escalations/<esc_id>/re-escalate', methods=['POST'])
+def re_escalate(esc_id):
+    """Re-escalate an existing escalation to a different person."""
+    try:
+        data = request.get_json() or {}
+        to = data.get('to', 'jakeh')
+        notes = data.get('notes', '')
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == esc_id:
+                draft['escalated_to'] = to
+                draft['escalation_notes'] = notes
+                draft['re_escalated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 're-escalated', 'to': to})
+        return jsonify({'error': 'Escalation not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
