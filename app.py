@@ -210,6 +210,162 @@ def api_test():
         return jsonify({'method': 'POST', 'status': 'success'})
     return jsonify({'method': 'GET', 'status': 'success'})
 
+@app.route('/support')
+def support_view():
+    """Public support view — no login required, read-only email list."""
+    all_drafts = load_drafts() or real_emails
+    
+    status_filter = request.args.get('status', 'all')
+    if status_filter == 'all':
+        drafts = all_drafts
+    else:
+        drafts = [d for d in all_drafts if d.get('status') == status_filter]
+    
+    status_order = {'pending': 0, 'escalated': 1, 'approved': 2, 'sent': 3, 'rejected': 4, 'resolved': 5}
+    drafts.sort(key=lambda d: (status_order.get(d.get('status', ''), 99), d.get('created_at', '')), reverse=False)
+    
+    pending_count = len([d for d in all_drafts if d.get('status') == 'pending'])
+    total_count = len(all_drafts)
+    sent_count = len([d for d in all_drafts if d.get('status') in ('approved', 'sent')])
+    
+    return render_template_string('''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ennie Support — Emails</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh; padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header {
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+            border-radius: 16px; padding: 24px; margin-bottom: 24px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .header h1 { color: #1a1a1a; font-size: 28px; margin: 0 0 8px 0; font-weight: 600; }
+        .header p { color: #666; margin: 0; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card {
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+            border-radius: 12px; padding: 16px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .stat-number { font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+        .stat-label { color: #666; font-size: 12px; text-transform: uppercase; font-weight: 500; }
+        .draft-card {
+            background: rgba(255,255,255,0.95); border-radius: 16px; padding: 20px;
+            margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .draft-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+        .contact h3 { margin: 0 0 4px 0; color: #1a1a1a; font-size: 18px; font-weight: 600; }
+        .contact .email { color: #666; font-size: 14px; }
+        .contact .time { color: #999; font-size: 12px; margin-top: 2px; }
+        .tag {
+            background: #007AFF; color: white; padding: 4px 10px; border-radius: 12px;
+            font-size: 11px; font-weight: 600; text-transform: capitalize;
+        }
+        .subject { font-weight: 600; margin-bottom: 10px; color: #333; font-size: 15px; }
+        .original, .reply { padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
+        .original { background: #f8f9fa; border-left: 4px solid #007AFF; }
+        .reply { background: #e8f5e8; border-left: 4px solid #34C759; }
+        .original h4, .reply h4 {
+            margin: 0 0 6px 0; font-size: 11px; color: #666;
+            text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;
+        }
+        .reply p { white-space: pre-line; line-height: 1.4; color: #2d5a2d; }
+        @media (max-width: 768px) {
+            .draft-header { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px;border-bottom:1px solid #eee;margin-bottom:24px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:20px;">✦</span>
+                <span style="font-size:17px;font-weight:700;color:#1a1a1a;">Ennie Support</span>
+            </div>
+            <a href="/login" style="font-size:13px;color:#999;text-decoration:none;padding:6px 14px;border:1px solid #ddd;border-radius:8px;">Admin Login</a>
+        </nav>
+
+        <div class="header">
+            <h1>Support Emails</h1>
+            <p>{{ total_count }} total emails</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ total_count }}</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ pending_count }}</div>
+                <div class="stat-label">Pending</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ sent_count }}</div>
+                <div class="stat-label">Handled</div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+            <a href="/support?status=all" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == \'all\' %}background:#007AFF;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">All ({{ total_count }})</a>
+            <a href="/support?status=pending" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == \'pending\' %}background:#FF9500;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Pending ({{ pending_count }})</a>
+            <a href="/support?status=sent" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == \'sent\' %}background:#34C759;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Handled</a>
+        </div>
+        
+        {% for draft in drafts %}
+        <div class="draft-card">
+            <div class="draft-header">
+                <div class="contact">
+                    <h3>{{ draft.from_name }}</h3>
+                    <div class="email">{{ draft.from_email }}</div>
+                    <div class="time">{{ draft.created_at }}</div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    {% set st = draft.status or \'pending\' %}
+                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;
+                        {% if st == \'pending\' %}background:#FFF3E0;color:#E65100;
+                        {% elif st == \'approved\' or st == \'sent\' %}background:#E8F5E9;color:#2E7D32;
+                        {% else %}background:#f0f0f0;color:#666;
+                        {% endif %}">{{ st }}</span>
+                    <div class="tag">{{ (draft.classification or \'general\').replace(\'_\', \' \') }}</div>
+                </div>
+            </div>
+            
+            <div class="subject">{{ draft.subject }}</div>
+            
+            <div class="original">
+                <h4>Original Email</h4>
+                <p>{{ draft.body_original }}</p>
+            </div>
+            
+            <div class="reply">
+                <h4>AI Draft Reply</h4>
+                <p>{{ draft.draft_body }}</p>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not drafts %}
+        <div style="text-align:center;padding:60px 20px;">
+            <div style="font-size:48px;margin-bottom:16px;">✓</div>
+            <h3 style="font-size:20px;font-weight:600;color:#1a1a1a;margin-bottom:8px;">All clear!</h3>
+            <p style="font-size:15px;color:#666;">No emails matching this filter.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
+    ''', drafts=drafts, total_count=total_count, pending_count=pending_count,
+        sent_count=sent_count, status_filter=status_filter)
+
 @app.route('/')
 @login_required
 def dashboard():
