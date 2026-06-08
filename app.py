@@ -3,14 +3,41 @@
 Demo Dashboard with Real Support Emails
 """
 
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, render_template, request, jsonify, session, redirect, url_for
+from functools import wraps
 import json
 import os
 import sqlite3
+import hashlib
 from datetime import datetime
 import uuid
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'ennie-support-' + hashlib.sha256(b'ennie2026').hexdigest()[:16])
+
+# ── Admin users (username → PIN) ──────────────────────────────────────────────
+ADMIN_USERS = {
+    'jakeh':   os.environ.get('PIN_JAKEH',   '1642'),
+    'casey':   os.environ.get('PIN_CASEY',   '3941'),
+    'charlie': os.environ.get('PIN_CHARLIE', '4521'),
+}
+
+ADMIN_DISPLAY = {
+    'jakeh':   'Jakeh',
+    'casey':   'Casey',
+    'charlie': 'Charlie',
+}
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('user'):
+            # Return JSON 401 for API calls, redirect for pages
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Not authenticated'}), 401
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated
 
 # Simple file-based storage for drafts (Railway-friendly)
 DRAFTS_FILE = os.path.join('/tmp', 'ennie_drafts.json')
@@ -79,6 +106,25 @@ real_emails = [
         "created_at": "2026-04-16 14:20"
     }
 ]
+
+# ── Auth routes ──────────────────────────────────────────────────────────────
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = (request.form.get('username') or '').strip().lower()
+        pin = (request.form.get('pin') or '').strip()
+        if username in ADMIN_USERS and ADMIN_USERS[username] == pin:
+            session['user'] = username
+            session['display_name'] = ADMIN_DISPLAY.get(username, username)
+            return redirect(url_for('dashboard'))
+        return render_template('login.html', error='Wrong PIN. Try again.')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
@@ -161,6 +207,7 @@ def api_test():
     return jsonify({'method': 'GET', 'status': 'success'})
 
 @app.route('/')
+@login_required
 def dashboard():
     # Load real drafts from file, fallback to demo data
     file_drafts = [d for d in load_drafts() if d.get('status') == 'pending']
@@ -316,9 +363,12 @@ def dashboard():
 <body>
     <div class="live-indicator">LIVE</div>
     <div class="container">
-        <div class="header">
-            <h1>Ennie Support Dashboard</h1>
-            <p>Team Access • Real Support Emails • {{ drafts|length }} Pending</p>
+        <div class="header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+                <h1>Ennie Support Dashboard</h1>
+                <p>Welcome, {{ display_name }} • {{ drafts|length }} Pending</p>
+            </div>
+            <a href="/logout" style="font-size:13px;color:#999;text-decoration:none;padding:6px 14px;border:1px solid #ddd;border-radius:8px;margin-top:4px;">Sign Out</a>
         </div>
         
         <div class="stats">
@@ -670,9 +720,10 @@ document.addEventListener('click', (e) => {
     </script>
 </body>
 </html>
-    ''', drafts=drafts, event_count=event_count, healing_count=healing_count)
+    ''', drafts=drafts, event_count=event_count, healing_count=healing_count, display_name=session.get('display_name', 'Admin'))
 
 @app.route('/api/drafts/<draft_id>/approve', methods=['POST'])
+@login_required
 def approve_draft(draft_id):
     """Approve a draft as-is (no edits). Preserves original for learning."""
     try:
@@ -692,6 +743,7 @@ def approve_draft(draft_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/drafts/<draft_id>/reject', methods=['POST'])
+@login_required
 def reject_draft(draft_id):
     """Reject a draft."""
     try:
@@ -711,6 +763,7 @@ def reject_draft(draft_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/drafts/<draft_id>/escalate', methods=['POST'])
+@login_required
 def escalate_draft(draft_id):
     """Escalate a draft to human review."""
     try:
@@ -732,6 +785,7 @@ def escalate_draft(draft_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/drafts/<draft_id>/edit', methods=['POST'])
+@login_required
 def edit_draft(draft_id):
     """Edit and approve a draft. Preserves original AI draft for learning."""
     try:
@@ -766,6 +820,7 @@ def get_approved_drafts():
     return jsonify(approved)
 
 @app.route('/api/drafts/<draft_id>/mark-sent', methods=['POST'])
+@login_required
 def mark_draft_sent(draft_id):
     """Mark a draft as sent after it's been emailed."""
     try:
@@ -813,6 +868,7 @@ def get_sent_examples():
     return jsonify(examples)
 
 @app.route('/api/lookup', methods=['GET'])
+@login_required
 def lookup_user():
     """Look up user across Kajabi, Eventbrite, and Klaviyo."""
     email = request.args.get('email', '').strip().lower()
@@ -967,6 +1023,7 @@ def lookup_user():
 # ── Template-based page routes ──────────────────────────────────────────────
 
 @app.route('/inbox')
+@login_required
 def inbox_page():
     """Render the inbox page using the Jinja2 template."""
     from flask import render_template
@@ -975,6 +1032,7 @@ def inbox_page():
     return render_template('inbox.html', drafts=pending)
 
 @app.route('/escalations')
+@login_required
 def escalations_page():
     """Render the escalations page using the Jinja2 template."""
     from flask import render_template
@@ -983,6 +1041,7 @@ def escalations_page():
     return render_template('escalations.html', escalations=escalated)
 
 @app.route('/api/escalations/<esc_id>/respond', methods=['POST'])
+@login_required
 def respond_escalation(esc_id):
     """Respond to an escalation and mark it resolved."""
     try:
@@ -1003,6 +1062,7 @@ def respond_escalation(esc_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/escalations/<esc_id>/re-escalate', methods=['POST'])
+@login_required
 def re_escalate(esc_id):
     """Re-escalate an existing escalation to a different person."""
     try:

@@ -4,44 +4,137 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In — Ennie Support</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 50%, #1C1C1E 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+    }
+    .login-logo-icon {
+      font-size: 40px;
+      display: block;
+      margin-bottom: 12px;
+    }
+    .login-card h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .login-card .subtitle {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 32px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+      text-align: left;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      font-size: 16px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      border-color: rgba(255,149,0,0.6);
+    }
+    input::placeholder { color: rgba(255,255,255,0.3); }
+    select option { color: #1C1C1E; background: #fff; }
+    .pin-input {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 12px;
+      padding-left: 24px;
+    }
+    .btn-signin {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      background: linear-gradient(135deg, #FF9500, #FF6B00);
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
+    .btn-signin:hover { opacity: 0.9; }
+    .error-msg {
+      background: rgba(255,59,48,0.15);
+      border: 1px solid rgba(255,59,48,0.3);
+      color: #FF6B6B;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
 <body>
-<div class="login-wrap">
-  <div class="glass-card login-card">
+<div class="login-card">
 
-    <div class="login-logo">
-      <span class="login-logo-icon">✦</span>
-      <h1>Ennie Support</h1>
-      <p>Charlie Goldsmith Team Dashboard</p>
+  <span class="login-logo-icon">✦</span>
+  <h1>Ennie Support</h1>
+  <p class="subtitle">Team Dashboard</p>
+
+  {% if error %}
+  <div class="error-msg">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('login') }}">
+    <div class="form-group">
+      <label class="form-label" for="username">Who are you?</label>
+      <select id="username" name="username" required>
+        <option value="" disabled {% if not request.form.get('username') %}selected{% endif %}>Select your name…</option>
+        <option value="jakeh" {% if request.form.get('username') == 'jakeh' %}selected{% endif %}>Jakeh</option>
+        <option value="casey" {% if request.form.get('username') == 'casey' %}selected{% endif %}>Casey</option>
+        <option value="charlie" {% if request.form.get('username') == 'charlie' %}selected{% endif %}>Charlie</option>
+      </select>
     </div>
+    <div class="form-group">
+      <label class="form-label" for="pin">PIN</label>
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4"
+             id="pin" name="pin"
+             class="pin-input"
+             placeholder="••••"
+             autocomplete="off" required>
+    </div>
+    <button type="submit" class="btn-signin">Sign In</button>
+  </form>
 
-    {% if error %}
-    <div class="error-msg">{{ error }}</div>
-    {% endif %}
-
-    <form method="post" action="{{ url_for('login') }}">
-      <div class="form-group">
-        <label class="form-label" for="email">Email</label>
-        <input type="email" id="email" name="email"
-               placeholder="you@goldsmith.team"
-               autocomplete="email" required autofocus>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="password">Password</label>
-        <input type="password" id="password" name="password"
-               placeholder="••••••••"
-               autocomplete="current-password" required>
-      </div>
-      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;">
-        Sign In
-      </button>
-    </form>
-
-    <p style="margin-top:20px;font-size:12px;color:var(--gray);text-align:center;">
-      admin · reviewer · cassie · charlie
-    </p>
-  </div>
 </div>
 </body>
 </html>
