@@ -109,6 +109,296 @@ real_emails = [
     }
 ]
 
+# ── Support template (no-login view with full actions) ───────────────────────
+SUPPORT_TEMPLATE = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ennie Support — Emails</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh; padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header {
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+            border-radius: 16px; padding: 24px; margin-bottom: 24px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .header h1 { color: #1a1a1a; font-size: 28px; margin: 0 0 8px 0; font-weight: 600; }
+        .header p { color: #666; margin: 0; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card {
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+            border-radius: 12px; padding: 16px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .stat-number { font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+        .stat-label { color: #666; font-size: 12px; text-transform: uppercase; font-weight: 500; }
+        .draft-card {
+            background: rgba(255,255,255,0.95); border-radius: 16px; padding: 20px;
+            margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .draft-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+        .contact h3 { margin: 0 0 4px 0; color: #1a1a1a; font-size: 18px; font-weight: 600; }
+        .contact .email { color: #666; font-size: 14px; }
+        .contact .time { color: #999; font-size: 12px; margin-top: 2px; }
+        .tag {
+            background: #007AFF; color: white; padding: 4px 10px; border-radius: 12px;
+            font-size: 11px; font-weight: 600; text-transform: capitalize;
+        }
+        .subject { font-weight: 600; margin-bottom: 10px; color: #333; font-size: 15px; }
+        .original, .reply { padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
+        .original { background: #f8f9fa; border-left: 4px solid #007AFF; }
+        .reply { background: #e8f5e8; border-left: 4px solid #34C759; }
+        .original h4, .reply h4 {
+            margin: 0 0 6px 0; font-size: 11px; color: #666;
+            text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;
+        }
+        .reply p { white-space: pre-line; line-height: 1.4; color: #2d5a2d; }
+        .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn {
+            padding: 8px 14px; border-radius: 6px; border: none;
+            font-weight: 600; color: white; cursor: pointer; font-size: 13px;
+            transition: all 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn-approve { background: #34C759; }
+        .btn-edit { background: #007AFF; }
+        .btn-escalate { background: #FF9500; }
+        .btn-reject { background: #FF3B30; }
+        .inline-edit-form {
+            display: none; margin-top: 12px; padding: 12px; background: #f8f9fa;
+            border-radius: 8px; border: 2px solid #007AFF;
+        }
+        .inline-edit-form.active { display: block; }
+        .edit-textarea {
+            width: 100%; min-height: 120px; padding: 12px; border: 1px solid #ddd;
+            border-radius: 6px; font-family: inherit; font-size: 14px; line-height: 1.5;
+            resize: vertical;
+        }
+        .edit-actions { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+        .btn-small {
+            padding: 6px 12px; border-radius: 4px; border: none;
+            font-weight: 500; color: white; cursor: pointer; font-size: 12px;
+        }
+        .btn-save { background: #34C759; }
+        .btn-cancel { background: #666; }
+        .escalation-form {
+            display: none; margin-top: 12px; padding: 12px; background: #fff3cd;
+            border-radius: 8px; border: 2px solid #FF9500;
+        }
+        .escalation-form.active { display: block; }
+        .escalation-textarea {
+            width: 100%; height: 80px; padding: 8px; border: 1px solid #ddd;
+            border-radius: 4px; font-family: inherit; font-size: 13px;
+        }
+        .escalation-note { font-size: 12px; color: #856404; margin-bottom: 8px; }
+        @media (max-width: 768px) {
+            .draft-header { flex-direction: column; align-items: flex-start; }
+            .actions { width: 100%; } .btn { flex: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px;border-bottom:1px solid #eee;margin-bottom:24px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:20px;">✦</span>
+                <span style="font-size:17px;font-weight:700;color:#1a1a1a;">Ennie Support</span>
+            </div>
+            <a href="/login" style="font-size:13px;color:#999;text-decoration:none;padding:6px 14px;border:1px solid #ddd;border-radius:8px;">Admin Login</a>
+        </nav>
+
+        <div class="header">
+            <h1>Support Emails</h1>
+            <p>{{ total_count }} total emails</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ total_count }}</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ pending_count }}</div>
+                <div class="stat-label">Pending</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ escalated_count }}</div>
+                <div class="stat-label">Escalated</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ approved_count }}</div>
+                <div class="stat-label">Handled</div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+            <a href="/support?status=all" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'all' %}background:#007AFF;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">All ({{ total_count }})</a>
+            <a href="/support?status=pending" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'pending' %}background:#FF9500;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Pending ({{ pending_count }})</a>
+            <a href="/support?status=escalated" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'escalated' %}background:#FF3B30;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Escalated ({{ escalated_count }})</a>
+            <a href="/support?status=approved" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'approved' %}background:#34C759;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Handled ({{ approved_count }})</a>
+        </div>
+
+        {% for draft in drafts %}
+        <div class="draft-card" data-draft-id="{{ draft.id }}">
+            <div class="draft-header">
+                <div class="contact">
+                    <h3>{{ draft.from_name }}</h3>
+                    <div class="email">{{ draft.from_email }}</div>
+                    <div class="time">{{ draft.created_at }}</div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    {% set st = draft.status or 'pending' %}
+                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;
+                        {% if st == 'pending' %}background:#FFF3E0;color:#E65100;
+                        {% elif st == 'escalated' %}background:#FFEBEE;color:#C62828;
+                        {% elif st == 'approved' or st == 'sent' %}background:#E8F5E9;color:#2E7D32;
+                        {% elif st == 'rejected' %}background:#ECEFF1;color:#546E7A;
+                        {% elif st == 'resolved' %}background:#E3F2FD;color:#1565C0;
+                        {% else %}background:#f0f0f0;color:#666;
+                        {% endif %}">{{ st }}</span>
+                    <div class="tag">{{ (draft.classification or 'general').replace('_', ' ') }}</div>
+                </div>
+            </div>
+
+            <div class="subject">{{ draft.subject }}</div>
+
+            <div class="original">
+                <h4>Original Email</h4>
+                <p>{{ draft.body_original }}</p>
+            </div>
+
+            <div class="reply">
+                <h4>AI Draft Reply</h4>
+                <p class="draft-preview">{{ draft.draft_body }}</p>
+
+                <div class="inline-edit-form" id="edit-form-{{ draft.id }}">
+                    <textarea class="edit-textarea" id="edit-text-{{ draft.id }}">{{ draft.draft_body }}</textarea>
+                    <div class="edit-actions">
+                        <button class="btn-small btn-save" onclick="saveEdit('{{ draft.id }}')">Save & Approve</button>
+                        <button class="btn-small btn-cancel" onclick="cancelEdit('{{ draft.id }}')">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="escalation-form" id="escalation-form-{{ draft.id }}">
+                    <div class="escalation-note">⚠️ Escalating — select who to send to:</div>
+                    <select id="escalation-to-{{ draft.id }}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-bottom:8px;">
+                        <option value="jakeh">Jakeh</option>
+                        <option value="casey">Casey</option>
+                        <option value="charlie">Charlie</option>
+                    </select>
+                    <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Add context (optional)"></textarea>
+                    <div class="edit-actions">
+                        <button class="btn-small" style="background: #FF9500;" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
+                        <button class="btn-small btn-cancel" onclick="cancelEscalation('{{ draft.id }}')">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            {% if (draft.status or 'pending') == 'pending' %}
+            <div class="actions">
+                <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
+                <button class="btn btn-edit" onclick="showEditForm('{{ draft.id }}')">Edit</button>
+                <button class="btn btn-escalate" onclick="showEscalationForm('{{ draft.id }}')">Escalate</button>
+                <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% if not drafts %}
+        <div style="text-align:center;padding:60px 20px;">
+            <div style="font-size:48px;margin-bottom:16px;">✓</div>
+            <h3 style="font-size:20px;font-weight:600;color:#1a1a1a;margin-bottom:8px;">All clear!</h3>
+            <p style="font-size:15px;color:#666;">No emails matching this filter.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+    function toast(message, type) {
+      const el = document.createElement('div');
+      el.textContent = message;
+      el.style.cssText = `position:fixed;top:20px;right:20px;z-index:1000;background:#333;color:white;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,0.15);transition:all 0.3s ease;opacity:0;transform:translateY(-20px);`;
+      if (type === 'success') el.style.background = '#34C759';
+      if (type === 'error') el.style.background = '#FF3B30';
+      document.body.appendChild(el);
+      requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+      setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(-20px)'; setTimeout(() => el.remove(), 300); }, 3000);
+    }
+
+    async function apiPost(url, data) {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data || {}) });
+      return r.json();
+    }
+
+    function removeDraftCard(id) {
+      const card = document.querySelector('[data-draft-id="' + id + '"]');
+      if (!card) return;
+      card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      card.style.opacity = '0'; card.style.transform = 'translateX(20px)';
+      setTimeout(() => { card.remove(); if (!document.querySelectorAll('.draft-card').length) location.reload(); }, 300);
+    }
+
+    function approveDraft(id) {
+      apiPost('/api/support/' + id + '/approve').then(res => {
+        if (res.ok) { removeDraftCard(id); toast('Draft approved!', 'success'); }
+        else toast('Error: ' + (res.error || 'Something went wrong'), 'error');
+      }).catch(() => toast('Network error', 'error'));
+    }
+
+    function rejectDraft(id) {
+      const reason = prompt('Rejection reason (optional):') || '';
+      apiPost('/api/support/' + id + '/reject', { notes: reason }).then(res => {
+        if (res.ok) { removeDraftCard(id); toast('Draft rejected'); }
+        else toast('Error: ' + (res.error || 'Something went wrong'), 'error');
+      });
+    }
+
+    function showEditForm(id) {
+      document.querySelectorAll('.inline-edit-form.active, .escalation-form.active').forEach(f => f.classList.remove('active'));
+      const form = document.getElementById('edit-form-' + id);
+      if (form) { form.classList.add('active'); document.getElementById('edit-text-' + id)?.focus(); }
+    }
+    function cancelEdit(id) { document.getElementById('edit-form-' + id)?.classList.remove('active'); }
+
+    function saveEdit(id) {
+      const text = document.getElementById('edit-text-' + id)?.value.trim();
+      if (!text) { toast('Draft text cannot be empty', 'error'); return; }
+      apiPost('/api/support/' + id + '/edit', { draft_text: text }).then(res => {
+        if (res.ok) { removeDraftCard(id); toast('Draft edited and approved!', 'success'); }
+        else toast('Error: ' + (res.error || 'Something went wrong'), 'error');
+      });
+    }
+
+    function showEscalationForm(id) {
+      document.querySelectorAll('.inline-edit-form.active, .escalation-form.active').forEach(f => f.classList.remove('active'));
+      const form = document.getElementById('escalation-form-' + id);
+      if (form) { form.classList.add('active'); document.getElementById('escalation-text-' + id)?.focus(); }
+    }
+    function cancelEscalation(id) { document.getElementById('escalation-form-' + id)?.classList.remove('active'); }
+
+    function saveEscalation(id) {
+      const to = document.getElementById('escalation-to-' + id)?.value || 'jakeh';
+      const notes = document.getElementById('escalation-text-' + id)?.value.trim() || '';
+      const names = { jakeh: 'Jakeh', casey: 'Casey', charlie: 'Charlie' };
+      apiPost('/api/support/' + id + '/escalate', { to, notes }).then(res => {
+        if (res.ok) { removeDraftCard(id); toast('Escalated to ' + (names[to] || to), 'success'); }
+        else toast('Error: ' + (res.error || 'Something went wrong'), 'error');
+      });
+    }
+    </script>
+</body>
+</html>
+'''
+
 # ── Auth routes ──────────────────────────────────────────────────────────────
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -212,7 +502,7 @@ def api_test():
 
 @app.route('/support')
 def support_view():
-    """Public support view — no login required, read-only email list."""
+    """Public support view — no login required, full actions (approve/edit/escalate)."""
     all_drafts = load_drafts() or real_emails
     
     status_filter = request.args.get('status', 'all')
@@ -225,146 +515,14 @@ def support_view():
     drafts.sort(key=lambda d: (status_order.get(d.get('status', ''), 99), d.get('created_at', '')), reverse=False)
     
     pending_count = len([d for d in all_drafts if d.get('status') == 'pending'])
+    escalated_count = len([d for d in all_drafts if d.get('status') == 'escalated'])
+    approved_count = len([d for d in all_drafts if d.get('status') in ('approved', 'sent')])
     total_count = len(all_drafts)
-    sent_count = len([d for d in all_drafts if d.get('status') in ('approved', 'sent')])
     
-    return render_template_string('''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Ennie Support — Emails</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            min-height: 100vh; padding: 20px;
-        }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .header {
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
-            border-radius: 16px; padding: 24px; margin-bottom: 24px; text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        .header h1 { color: #1a1a1a; font-size: 28px; margin: 0 0 8px 0; font-weight: 600; }
-        .header p { color: #666; margin: 0; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card {
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
-            border-radius: 12px; padding: 16px; text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        .stat-number { font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
-        .stat-label { color: #666; font-size: 12px; text-transform: uppercase; font-weight: 500; }
-        .draft-card {
-            background: rgba(255,255,255,0.95); border-radius: 16px; padding: 20px;
-            margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-        .draft-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-        .contact h3 { margin: 0 0 4px 0; color: #1a1a1a; font-size: 18px; font-weight: 600; }
-        .contact .email { color: #666; font-size: 14px; }
-        .contact .time { color: #999; font-size: 12px; margin-top: 2px; }
-        .tag {
-            background: #007AFF; color: white; padding: 4px 10px; border-radius: 12px;
-            font-size: 11px; font-weight: 600; text-transform: capitalize;
-        }
-        .subject { font-weight: 600; margin-bottom: 10px; color: #333; font-size: 15px; }
-        .original, .reply { padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
-        .original { background: #f8f9fa; border-left: 4px solid #007AFF; }
-        .reply { background: #e8f5e8; border-left: 4px solid #34C759; }
-        .original h4, .reply h4 {
-            margin: 0 0 6px 0; font-size: 11px; color: #666;
-            text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;
-        }
-        .reply p { white-space: pre-line; line-height: 1.4; color: #2d5a2d; }
-        @media (max-width: 768px) {
-            .draft-header { flex-direction: column; align-items: flex-start; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <nav style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px;border-bottom:1px solid #eee;margin-bottom:24px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-size:20px;">✦</span>
-                <span style="font-size:17px;font-weight:700;color:#1a1a1a;">Ennie Support</span>
-            </div>
-            <a href="/login" style="font-size:13px;color:#999;text-decoration:none;padding:6px 14px;border:1px solid #ddd;border-radius:8px;">Admin Login</a>
-        </nav>
-
-        <div class="header">
-            <h1>Support Emails</h1>
-            <p>{{ total_count }} total emails</p>
-        </div>
-        
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-number">{{ total_count }}</div>
-                <div class="stat-label">Total</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">{{ pending_count }}</div>
-                <div class="stat-label">Pending</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">{{ sent_count }}</div>
-                <div class="stat-label">Handled</div>
-            </div>
-        </div>
-
-        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-            <a href="/support?status=all" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == \'all\' %}background:#007AFF;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">All ({{ total_count }})</a>
-            <a href="/support?status=pending" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == \'pending\' %}background:#FF9500;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Pending ({{ pending_count }})</a>
-            <a href="/support?status=sent" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == \'sent\' %}background:#34C759;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Handled</a>
-        </div>
-        
-        {% for draft in drafts %}
-        <div class="draft-card">
-            <div class="draft-header">
-                <div class="contact">
-                    <h3>{{ draft.from_name }}</h3>
-                    <div class="email">{{ draft.from_email }}</div>
-                    <div class="time">{{ draft.created_at }}</div>
-                </div>
-                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                    {% set st = draft.status or \'pending\' %}
-                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;
-                        {% if st == \'pending\' %}background:#FFF3E0;color:#E65100;
-                        {% elif st == \'approved\' or st == \'sent\' %}background:#E8F5E9;color:#2E7D32;
-                        {% else %}background:#f0f0f0;color:#666;
-                        {% endif %}">{{ st }}</span>
-                    <div class="tag">{{ (draft.classification or \'general\').replace(\'_\', \' \') }}</div>
-                </div>
-            </div>
-            
-            <div class="subject">{{ draft.subject }}</div>
-            
-            <div class="original">
-                <h4>Original Email</h4>
-                <p>{{ draft.body_original }}</p>
-            </div>
-            
-            <div class="reply">
-                <h4>AI Draft Reply</h4>
-                <p>{{ draft.draft_body }}</p>
-            </div>
-        </div>
-        {% endfor %}
-        
-        {% if not drafts %}
-        <div style="text-align:center;padding:60px 20px;">
-            <div style="font-size:48px;margin-bottom:16px;">✓</div>
-            <h3 style="font-size:20px;font-weight:600;color:#1a1a1a;margin-bottom:8px;">All clear!</h3>
-            <p style="font-size:15px;color:#666;">No emails matching this filter.</p>
-        </div>
-        {% endif %}
-    </div>
-</body>
-</html>
-    ''', drafts=drafts, total_count=total_count, pending_count=pending_count,
-        sent_count=sent_count, status_filter=status_filter)
+    return render_template_string(SUPPORT_TEMPLATE,
+        drafts=drafts, total_count=total_count, pending_count=pending_count,
+        escalated_count=escalated_count, approved_count=approved_count,
+        status_filter=status_filter)
 
 @app.route('/')
 @login_required
@@ -1326,6 +1484,81 @@ def re_escalate(esc_id):
                 save_drafts(drafts)
                 return jsonify({'ok': True, 'status': 're-escalated', 'to': to})
         return jsonify({'error': 'Escalation not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ── Public support API (no login required) ───────────────────────────────────
+
+@app.route('/api/support/<draft_id>/approve', methods=['POST'])
+def support_approve(draft_id):
+    try:
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == draft_id:
+                if 'original_draft_body' not in draft:
+                    draft['original_draft_body'] = draft.get('draft_body', '')
+                draft['was_edited'] = False
+                draft['status'] = 'approved'
+                draft['approved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 'approved'})
+        return jsonify({'error': 'Draft not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/support/<draft_id>/reject', methods=['POST'])
+def support_reject(draft_id):
+    try:
+        data = request.get_json() or {}
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == draft_id:
+                draft['status'] = 'rejected'
+                draft['rejected_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                draft['rejection_notes'] = data.get('notes', '')
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 'rejected'})
+        return jsonify({'error': 'Draft not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/support/<draft_id>/escalate', methods=['POST'])
+def support_escalate(draft_id):
+    try:
+        data = request.get_json() or {}
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == draft_id:
+                draft['status'] = 'escalated'
+                draft['escalated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                draft['escalation_notes'] = data.get('notes', '')
+                draft['escalated_to'] = data.get('to', 'jakeh')
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 'escalated'})
+        return jsonify({'error': 'Draft not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/support/<draft_id>/edit', methods=['POST'])
+def support_edit(draft_id):
+    try:
+        data = request.get_json() or {}
+        draft_text = data.get('draft_text', '').strip()
+        if not draft_text:
+            return jsonify({'error': 'Draft text required'}), 400
+        drafts = load_drafts()
+        for draft in drafts:
+            if draft.get('id') == draft_id:
+                if 'original_draft_body' not in draft:
+                    draft['original_draft_body'] = draft.get('draft_body', '')
+                draft['draft_body'] = draft_text
+                draft['was_edited'] = True
+                draft['status'] = 'approved'
+                draft['edited_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                draft['approved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                save_drafts(drafts)
+                return jsonify({'ok': True, 'status': 'edited_and_approved'})
+        return jsonify({'error': 'Draft not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
