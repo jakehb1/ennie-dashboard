@@ -867,6 +867,12 @@ def get_sent_examples():
     
     return jsonify(examples)
 
+@app.route('/lookup')
+@login_required
+def lookup_page():
+    """Render the lookup page."""
+    return render_template('lookup.html')
+
 @app.route('/api/lookup', methods=['GET'])
 @login_required
 def lookup_user():

@@ -54,7 +54,7 @@
       <button class="btn btn-danger btn-sm" onclick="rejectDraft({{ d.id }})">
         ✕ Reject
       </button>
-      <a href="{{ url_for('lookup') }}?email={{ d.sender_email }}"
+      <a href="{{ url_for('lookup_page') }}?email={{ d.sender_email }}"
          class="btn btn-secondary btn-sm">
         🔍 Lookup
       </a>
