@@ -600,6 +600,22 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/health')
+@app.route('/healthz')
+def health_check():
+    """Unauthenticated health check endpoint — keeps Railway from sleeping the service."""
+    try:
+        # Quick DB connectivity check
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('SELECT 1')
+        cur.close()
+        conn.close()
+        return jsonify({'status': 'healthy', 'db': 'connected', 'timestamp': datetime.now().isoformat()}), 200
+    except Exception as e:
+        return jsonify({'status': 'unhealthy', 'db': 'error', 'error': str(e)}), 503
+
+
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
     """Webhook endpoint for support runner."""
