@@ -1310,12 +1310,12 @@ function regenerateDraft(id) {
   const card = document.querySelector('[data-draft-id="' + id + '"]');
   if (card) {
     const actions = card.querySelector('.actions');
-    if (actions) actions.innerHTML = '<span style="color:#8B5CF6;font-weight:600;font-size:13px;">🔄 Regenerating...</span>';
+    if (actions) actions.innerHTML = '<span style="color:#8B5CF6;font-weight:600;font-size:13px;">🔄 Regenerating... please wait</span>';
   }
   apiPost('/api/drafts/' + id + '/regenerate').then(res => {
-    if (res.ok) { toast('Regeneration requested — new draft will appear shortly', 'success'); }
-    else toast('Error: ' + (res.error || 'Failed'), 'error');
-  }).catch(() => toast('Network error', 'error'));
+    if (res.ok) { toast('Draft regenerated!', 'success'); location.reload(); }
+    else { toast('Error: ' + (res.error || 'Failed'), 'error'); location.reload(); }
+  }).catch(() => { toast('Network error', 'error'); location.reload(); });
 }
 
 // ── Relative time ──────────────────────────────────────────────────────────────────
@@ -1632,19 +1632,95 @@ def rate_draft(draft_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+REGEN_MODEL = 'anthropic/claude-sonnet-4-20250514'
+
+def call_openrouter(prompt, model=None, max_tokens=1200):
+    """Call OpenRouter API to generate a response."""
+    import requests as req
+    model = model or REGEN_MODEL
+    r = req.post('https://openrouter.ai/api/v1/chat/completions',
+        headers={'Authorization': f'Bearer {OPENROUTER_API_KEY}', 'Content-Type': 'application/json'},
+        json={'model': model, 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': max_tokens},
+        timeout=60
+    )
+    r.raise_for_status()
+    return r.json()['choices'][0]['message']['content'].strip()
+
+def build_regen_prompt(draft):
+    """Build regeneration prompt from draft data."""
+    return f"""you are casey or eli from charlie goldsmith's support team responding to a customer email.
+
+IMPORTANT LINKS:
+- Generic Kajabi login: teaching.charliegoldsmith.com/login
+- Energy Teaching 2026 signup: https://teaching.charliegoldsmith.com/offers/sakpMuQo/checkout
+- Main website: www.charliegoldsmith.com
+- NEVER use "charliegoldsmith.mykajabi.com"
+
+voice and style:
+- warm, professional tone. friendly but polished — not overly casual, not overly friendly.
+- NEVER use slang greetings like "G'day", "Hey there!", "Howdy", "mate", "folks". just use "Hi [name]," or "Hello [name],".
+- short sentences. get to the point. no filler, no fluff.
+- avoid casual/slang words like "grab", "check out", "awesome", "cool". use proper alternatives like "purchase", "view", "wonderful".
+- ABSOLUTELY NO EMOJIS. no hearts, no stars, no smiley faces, nothing. plain text only.
+- no dashes ever. use :) sparingly.
+- always sign off with:
+
+With love,
+
+*The Charlie Goldsmith Support Team*
+www.charliegoldsmith.com
+
+- start with "hi [name]," when you know their name
+- say "thanks for reaching out" not "thank you for contacting us"
+- never say "i'd be happy to help" or "we appreciate your patience" or "don't hesitate to reach out"
+- keep it human. if you'd cringe reading it out loud, rewrite it.
+- NEVER PUNT: do not say "we've passed this along" or "someone will get back to you". answer directly.
+- NEVER PROMISE TO PASS ANYTHING TO CHARLIE.
+- FRAMING: never say what Charlie doesn't do. guide toward what IS available.
+
+customer email:
+{draft.get('body_original', '')}
+
+subject: {draft.get('subject', '')}
+from: {draft.get('from_name', '')} ({draft.get('from_email', '')})
+
+write a support response:"""
+
 @app.route('/api/drafts/<draft_id>/regenerate', methods=['POST'])
 @login_required
 def regenerate_draft(draft_id):
-    """Request regeneration of a draft response."""
+    """Regenerate AI draft response using OpenRouter."""
     try:
         draft = get_draft(draft_id)
         if not draft:
             return jsonify({'error': 'Draft not found'}), 404
-        # Mark as needing regeneration — the email processing pipeline picks this up
+        
+        if not OPENROUTER_API_KEY:
+            return jsonify({'error': 'OpenRouter API key not configured'}), 500
+        
+        # Mark as regenerating
         update_draft(draft_id, {'status': 'regenerating'})
-        return jsonify({'ok': True, 'message': 'Regeneration requested'})
+        
+        # Generate new response
+        prompt = build_regen_prompt(draft)
+        new_draft_body = call_openrouter(prompt)
+        
+        # Save the original if not already saved, then update with new draft
+        updates = {
+            'draft_body': new_draft_body,
+            'status': 'pending',
+            'was_edited': False,
+        }
+        if not draft.get('original_draft_body'):
+            updates['original_draft_body'] = draft.get('draft_body', '')
+        
+        update_draft(draft_id, updates)
+        return jsonify({'ok': True, 'message': 'Draft regenerated', 'draft_body': new_draft_body})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # Revert status on failure
+        update_draft(draft_id, {'status': 'pending'})
+        return jsonify({'error': f'Regeneration failed: {str(e)}'}), 500
 
 @app.route('/api/escalations/stale', methods=['GET'])
 @login_required
