@@ -65,6 +65,20 @@ def init_db():
     cur.execute('CREATE INDEX IF NOT EXISTS idx_drafts_status ON drafts(status)')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_drafts_thread_id ON drafts(thread_id)')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_drafts_message_id ON drafts(message_id)')
+    # New columns for dashboard updates
+    for col_def in [
+        "approved_by TEXT DEFAULT ''",
+        "claimed_by TEXT DEFAULT ''",
+        "claimed_at TEXT DEFAULT ''",
+        "urgency TEXT DEFAULT 'not_urgent'",
+        "urgency_label TEXT DEFAULT ''",
+        "hidden_trace_id TEXT DEFAULT ''",
+    ]:
+        col_name = col_def.split()[0]
+        try:
+            cur.execute(f'ALTER TABLE drafts ADD COLUMN {col_def}')
+        except Exception:
+            pass  # Column already exists
     cur.close()
     conn.close()
 
@@ -81,14 +95,14 @@ ADMIN_USERS = {
     'jakeh':   os.environ.get('PIN_JAKEH',   '1234'),
     'casey':   os.environ.get('PIN_CASEY',   '1234'),
     'charlie': os.environ.get('PIN_CHARLIE', '1234'),
-    'cara':    os.environ.get('PIN_CARA',    '1234'),
+    'kara':    os.environ.get('PIN_KARA',    '1234'),
 }
 
 ADMIN_DISPLAY = {
     'jakeh':   'Jakeh',
     'casey':   'Casey',
     'charlie': 'Charlie',
-    'cara':    'Cara',
+    'kara':    'Kara',
 }
 
 def login_required(f):
@@ -127,14 +141,16 @@ def save_draft(draft):
                 escalate, escalation_reason, escalation_notes, escalated_to, escalated_at,
                 escalation_response, rejection_notes, committee_model, committee_confidence,
                 was_edited, created_at, approved_at, edited_at, rejected_at, resolved_at,
-                re_escalated_at, sent_at)
+                re_escalated_at, sent_at,
+                approved_by, claimed_by, claimed_at, urgency, urgency_label, hidden_trace_id)
             VALUES (%(id)s, %(thread_id)s, %(message_id)s, %(from_email)s, %(from_name)s,
                 %(subject)s, %(body_original)s, %(draft_body)s, %(original_draft_body)s,
                 %(classification)s, %(status)s, %(escalate)s, %(escalation_reason)s,
                 %(escalation_notes)s, %(escalated_to)s, %(escalated_at)s,
                 %(escalation_response)s, %(rejection_notes)s, %(committee_model)s,
                 %(committee_confidence)s, %(was_edited)s, %(created_at)s, %(approved_at)s,
-                %(edited_at)s, %(rejected_at)s, %(resolved_at)s, %(re_escalated_at)s, %(sent_at)s)
+                %(edited_at)s, %(rejected_at)s, %(resolved_at)s, %(re_escalated_at)s, %(sent_at)s,
+                %(approved_by)s, %(claimed_by)s, %(claimed_at)s, %(urgency)s, %(urgency_label)s, %(hidden_trace_id)s)
             ON CONFLICT (id) DO UPDATE SET
                 status = EXCLUDED.status,
                 draft_body = EXCLUDED.draft_body,
@@ -150,7 +166,13 @@ def save_draft(draft):
                 rejected_at = EXCLUDED.rejected_at,
                 resolved_at = EXCLUDED.resolved_at,
                 re_escalated_at = EXCLUDED.re_escalated_at,
-                sent_at = EXCLUDED.sent_at
+                sent_at = EXCLUDED.sent_at,
+                approved_by = EXCLUDED.approved_by,
+                claimed_by = EXCLUDED.claimed_by,
+                claimed_at = EXCLUDED.claimed_at,
+                urgency = EXCLUDED.urgency,
+                urgency_label = EXCLUDED.urgency_label,
+                hidden_trace_id = EXCLUDED.hidden_trace_id
         ''', {
             'id': draft.get('id', ''),
             'thread_id': draft.get('thread_id', ''),
@@ -180,6 +202,12 @@ def save_draft(draft):
             'resolved_at': draft.get('resolved_at', ''),
             're_escalated_at': draft.get('re_escalated_at', ''),
             'sent_at': draft.get('sent_at', ''),
+            'approved_by': draft.get('approved_by', ''),
+            'claimed_by': draft.get('claimed_by', ''),
+            'claimed_at': draft.get('claimed_at', ''),
+            'urgency': draft.get('urgency', 'not_urgent'),
+            'urgency_label': draft.get('urgency_label', ''),
+            'hidden_trace_id': draft.get('hidden_trace_id', ''),
         })
         cur.close()
         conn.close()
@@ -474,9 +502,10 @@ SUPPORT_TEMPLATE = '''
                 <div class="escalation-form" id="escalation-form-{{ draft.id }}">
                     <div class="escalation-note">⚠️ Escalating — select who to send to:</div>
                     <select id="escalation-to-{{ draft.id }}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-bottom:8px;">
+                        <option value="casey" selected>Casey</option>
                         <option value="jakeh">Jakeh</option>
-                        <option value="casey">Casey</option>
                         <option value="charlie">Charlie</option>
+                        <option value="kara">Kara</option>
                     </select>
                     <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Add context (optional)"></textarea>
                     <div class="edit-actions">
@@ -485,6 +514,10 @@ SUPPORT_TEMPLATE = '''
                     </div>
                 </div>
             </div>
+
+            {% if draft.approved_by and draft.status in ('approved', 'sent') %}
+            <div style="font-size:12px;color:#666;margin-bottom:8px;">✅ Approved by <strong>{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
+            {% endif %}
 
             {% if (draft.status or 'pending') == 'pending' %}
             <div class="actions">
@@ -572,7 +605,7 @@ SUPPORT_TEMPLATE = '''
     function saveEscalation(id) {
       const to = document.getElementById('escalation-to-' + id)?.value || 'jakeh';
       const notes = document.getElementById('escalation-text-' + id)?.value.trim() || '';
-      const names = { jakeh: 'Jakeh', casey: 'Casey', charlie: 'Charlie' };
+      const names = { jakeh: 'Jakeh', casey: 'Casey', charlie: 'Charlie', kara: 'Kara' };
       apiPost('/api/support/' + id + '/escalate', { to, notes }).then(res => {
         if (res.ok) { removeDraftCard(id); toast('Escalated to ' + (names[to] || to), 'success'); }
         else toast('Error: ' + (res.error || 'Something went wrong'), 'error');
@@ -593,6 +626,7 @@ def login():
         if username in ADMIN_USERS and ADMIN_USERS[username] == pin:
             session['user'] = username
             session['display_name'] = ADMIN_DISPLAY.get(username, username)
+            session['trace_id'] = uuid.uuid4().hex[:12]  # Hidden watermark per session
             return redirect(url_for('dashboard'))
         return render_template('login.html', error='Wrong PIN. Try again.')
     return render_template('login.html')
@@ -642,7 +676,8 @@ def webhook():
             'escalate': bool(data.get('escalate', False)),
             'escalation_reason': data.get('escalation_reason', ''),
             'status': 'pending',
-            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'hidden_trace_id': uuid.uuid4().hex[:12],
         }
         
         save_draft(new_draft)
@@ -752,17 +787,25 @@ def dashboard():
     else:
         drafts = [d for d in all_drafts if d.get('status') == status_filter]
     
-    # Sort: pending first, then by date descending
-    status_order = {'pending': 0, 'escalated': 1, 'approved': 2, 'sent': 3, 'rejected': 4, 'resolved': 5}
-    drafts.sort(key=lambda d: (status_order.get(d.get('status', ''), 99), d.get('created_at', '')), reverse=False)
+    # Sort: urgency first (urgent > moderate > not_urgent), then pending first, then oldest first
+    urgency_order = {'urgent': 0, 'moderate': 1, 'not_urgent': 2, '': 2}
+    status_order = {'pending': 0, 'regenerating': 0, 'escalated': 1, 'approved': 2, 'sent': 3, 'rejected': 4, 'resolved': 5}
+    drafts.sort(key=lambda d: (
+        status_order.get(d.get('status', ''), 99),
+        urgency_order.get(d.get('urgency', 'not_urgent'), 2),
+        d.get('created_at', '')
+    ))
     
     # Calculate stats
-    pending_count = len([d for d in all_drafts if d.get('status') == 'pending'])
+    pending_count = len([d for d in all_drafts if d.get('status') in ('pending', 'regenerating')])
     escalated_count = len([d for d in all_drafts if d.get('status') == 'escalated'])
     approved_count = len([d for d in all_drafts if d.get('status') in ('approved', 'sent')])
     total_count = len(all_drafts)
     event_count = len([d for d in all_drafts if d.get('classification', '').find('event') >= 0])
     healing_count = len([d for d in all_drafts if d.get('classification', '').find('healing') >= 0])
+    urgent_count = len([d for d in all_drafts if d.get('urgency') == 'urgent'])
+    current_user = session.get('user', '')
+    trace_id = session.get('trace_id', '')
     
     return render_template_string('''
 <!DOCTYPE html>
@@ -960,12 +1003,12 @@ def dashboard():
         </div>
         
         {% for draft in drafts %}
-        <div class="draft-card" data-draft-id="{{ draft.id }}">
+        <div class="draft-card" data-draft-id="{{ draft.id }}" data-trace="{{ trace_id }}" data-created="{{ draft.created_at }}">
             <div class="draft-header">
                 <div class="contact">
                     <h3><a href="#" class="user-link" onclick="lookupUser('{{ draft.from_email }}', '{{ draft.from_name }}'); return false;">{{ draft.from_name }}</a></h3>
                     <div class="email">{{ draft.from_email }}</div>
-                    <div class="time">{{ draft.created_at }}</div>
+                    <div class="time">{{ draft.created_at }} · <span class="relative-time" data-ts="{{ draft.created_at }}"></span></div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                     {% set st = draft.status or 'pending' %}
@@ -975,8 +1018,11 @@ def dashboard():
                         {% elif st == 'approved' or st == 'sent' %}background:#E8F5E9;color:#2E7D32;
                         {% elif st == 'rejected' %}background:#ECEFF1;color:#546E7A;
                         {% elif st == 'resolved' %}background:#E3F2FD;color:#1565C0;
+                        {% elif st == 'regenerating' %}background:#F3E8FF;color:#7C3AED;
                         {% else %}background:#f0f0f0;color:#666;
                         {% endif %}">{{ st }}</span>
+                    {% if draft.urgency == 'urgent' %}<span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#FFEBEE;color:#C62828;">🔴 Urgent</span>{% endif %}
+                    {% if draft.urgency == 'moderate' %}<span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#FFF8E1;color:#F57F17;">🟡 Moderate</span>{% endif %}
                     <div class="tag {{ draft.classification }}">{{ draft.classification.replace('_', ' ') }}</div>
                 </div>
             </div>
@@ -1005,9 +1051,10 @@ def dashboard():
                 <div class="escalation-form" id="escalation-form-{{ draft.id }}">
                     <div class="escalation-note">⚠️ Escalating — select who to send to:</div>
                     <select id="escalation-to-{{ draft.id }}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-bottom:8px;">
+                        <option value="casey" selected>Casey</option>
                         <option value="jakeh">Jakeh</option>
-                        <option value="casey">Casey</option>
                         <option value="charlie">Charlie</option>
+                        <option value="kara">Kara</option>
                     </select>
                     <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Add context (optional)"></textarea>
                     <div class="edit-actions">
@@ -1016,14 +1063,48 @@ def dashboard():
                     </div>
                 </div>
             </div>
-            
-            {% if (draft.status or 'pending') == 'pending' %}
-            <div class="actions">
-                <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
-                <button class="btn btn-edit" onclick="showEditForm('{{ draft.id }}')">Edit</button>
-                <button class="btn btn-escalate" onclick="showEscalationForm('{{ draft.id }}')">Escalate</button>
-                <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
+
+            {# ── Urgency selector ── #}
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                <span style="font-size:12px;color:#666;font-weight:600;">URGENCY:</span>
+                <select onchange="setUrgency('{{ draft.id }}', this.value)" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-weight:600;
+                    {% if draft.urgency == 'urgent' %}background:#FFEBEE;color:#C62828;
+                    {% elif draft.urgency == 'moderate' %}background:#FFF8E1;color:#F57F17;
+                    {% else %}background:#E8F5E9;color:#2E7D32;{% endif %}">
+                    <option value="not_urgent" {% if draft.urgency != 'moderate' and draft.urgency != 'urgent' %}selected{% endif %}>Not Urgent</option>
+                    <option value="moderate" {% if draft.urgency == 'moderate' %}selected{% endif %}>Moderate</option>
+                    <option value="urgent" {% if draft.urgency == 'urgent' %}selected{% endif %}>Urgent</option>
+                </select>
+                {% if draft.urgency == 'urgent' %}<span style="font-size:11px;">🔴</span>{% endif %}
+                {% if draft.urgency == 'moderate' %}<span style="font-size:11px;">🟡</span>{% endif %}
             </div>
+
+            {# ── Approved by info ── #}
+            {% if draft.approved_by and draft.status in ('approved', 'sent') %}
+            <div style="font-size:12px;color:#666;margin-bottom:8px;">✅ Approved by <strong>{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
+            {% endif %}
+
+            {# ── Claim/Action buttons ── #}
+            {% set st = draft.status or 'pending' %}
+            {% if st in ('pending', 'regenerating') %}
+                {% if draft.claimed_by and draft.claimed_by != current_user %}
+                <div style="padding:10px;background:#FFF3E0;border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:#E65100;">
+                    🔒 Claimed by {{ draft.claimed_by }}
+                </div>
+                {% elif draft.claimed_by == current_user %}
+                <div class="actions">
+                    <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
+                    <button class="btn btn-edit" onclick="showEditForm('{{ draft.id }}')">Edit</button>
+                    <button class="btn" style="background:#8B5CF6;" onclick="regenerateDraft('{{ draft.id }}')">🔄 Regenerate</button>
+                    <button class="btn btn-escalate" onclick="showEscalationForm('{{ draft.id }}')">Escalate</button>
+                    <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
+                    <button class="btn" style="background:#666;" onclick="unclaimDraft('{{ draft.id }}')">Unclaim</button>
+                </div>
+                {% else %}
+                <div class="actions">
+                    <button class="btn" style="background:#007AFF;" onclick="claimDraft('{{ draft.id }}')">🙋 Claim</button>
+                </div>
+                {% endif %}
             {% endif %}
         </div>
         {% endfor %}
@@ -1164,7 +1245,7 @@ function saveEscalation(id) {
   const to = select ? select.value : 'jakeh';
   const textarea = document.getElementById('escalation-text-' + id);
   const notes = textarea ? textarea.value.trim() : '';
-  const names = { jakeh: 'Jakeh', casey: 'Casey', charlie: 'Charlie' };
+  const names = { jakeh: 'Jakeh', casey: 'Casey', charlie: 'Charlie', kara: 'Kara' };
   
   apiPost('/api/drafts/' + id + '/escalate', { to: to, notes: notes }).then(res => {
     if (res.ok) { 
@@ -1175,6 +1256,59 @@ function saveEscalation(id) {
     }
   });
 }
+
+// ── Claim / Unclaim ──────────────────────────────────────────────────────────────────
+function claimDraft(id) {
+  apiPost('/api/drafts/' + id + '/claim').then(res => {
+    if (res.ok) { toast('Email claimed!', 'success'); location.reload(); }
+    else toast('Error: ' + (res.error || 'Could not claim'), 'error');
+  }).catch(() => toast('Network error', 'error'));
+}
+
+function unclaimDraft(id) {
+  apiPost('/api/drafts/' + id + '/unclaim').then(res => {
+    if (res.ok) { toast('Email released', 'success'); location.reload(); }
+    else toast('Error: ' + (res.error || 'Could not unclaim'), 'error');
+  }).catch(() => toast('Network error', 'error'));
+}
+
+// ── Urgency ──────────────────────────────────────────────────────────────────────
+function setUrgency(id, urgency) {
+  apiPost('/api/drafts/' + id + '/urgency', { urgency: urgency }).then(res => {
+    if (res.ok) { toast('Urgency set: ' + urgency.replace('_', ' '), 'success'); location.reload(); }
+    else toast('Error: ' + (res.error || 'Failed'), 'error');
+  }).catch(() => toast('Network error', 'error'));
+}
+
+// ── Regenerate ────────────────────────────────────────────────────────────────────
+function regenerateDraft(id) {
+  const card = document.querySelector('[data-draft-id="' + id + '"]');
+  if (card) {
+    const actions = card.querySelector('.actions');
+    if (actions) actions.innerHTML = '<span style="color:#8B5CF6;font-weight:600;font-size:13px;">🔄 Regenerating...</span>';
+  }
+  apiPost('/api/drafts/' + id + '/regenerate').then(res => {
+    if (res.ok) { toast('Regeneration requested — new draft will appear shortly', 'success'); }
+    else toast('Error: ' + (res.error || 'Failed'), 'error');
+  }).catch(() => toast('Network error', 'error'));
+}
+
+// ── Relative time ──────────────────────────────────────────────────────────────────
+function updateRelativeTimes() {
+  document.querySelectorAll('.relative-time').forEach(el => {
+    const ts = el.dataset.ts;
+    if (!ts) return;
+    const d = new Date(ts.replace(' ', 'T') + 'Z');
+    if (isNaN(d)) return;
+    const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (mins < 1) el.textContent = 'just now';
+    else if (mins < 60) el.textContent = mins + 'm ago';
+    else if (mins < 1440) el.textContent = Math.floor(mins / 60) + 'h ago';
+    else el.textContent = Math.floor(mins / 1440) + 'd ago';
+  });
+}
+updateRelativeTimes();
+setInterval(updateRelativeTimes, 60000);
 
 function showEditForm(id) {
   // Hide any other open forms first
@@ -1322,6 +1456,7 @@ document.addEventListener('click', (e) => {
         display_name=session.get('display_name', 'Admin'),
         total_count=total_count, pending_count=pending_count,
         escalated_count=escalated_count, approved_count=approved_count,
+        urgent_count=urgent_count, current_user=current_user, trace_id=trace_id,
         status_filter=status_filter)
 
 @app.route('/api/drafts/<draft_id>/approve', methods=['POST'])
@@ -1332,15 +1467,17 @@ def approve_draft(draft_id):
         draft = get_draft(draft_id)
         if not draft:
             return jsonify({'error': 'Draft not found'}), 404
+        approver = session.get('user', 'unknown')
         updates = {
             'was_edited': False,
             'status': 'approved',
             'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'approved_by': approver,
         }
         if not draft.get('original_draft_body'):
             updates['original_draft_body'] = draft.get('draft_body', '')
         update_draft(draft_id, updates)
-        return jsonify({'ok': True, 'status': 'approved'})
+        return jsonify({'ok': True, 'status': 'approved', 'approved_by': approver})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1388,17 +1525,109 @@ def edit_draft(draft_id):
         draft = get_draft(draft_id)
         if not draft:
             return jsonify({'error': 'Draft not found'}), 404
+        approver = session.get('user', 'unknown')
         updates = {
             'draft_body': draft_text,
             'was_edited': True,
             'status': 'approved',
             'edited_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'approved_by': approver,
         }
         if not draft.get('original_draft_body'):
             updates['original_draft_body'] = draft.get('draft_body', '')
         update_draft(draft_id, updates)
-        return jsonify({'ok': True, 'status': 'edited_and_approved'})
+        return jsonify({'ok': True, 'status': 'edited_and_approved', 'approved_by': approver})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/drafts/<draft_id>/claim', methods=['POST'])
+@login_required
+def claim_draft(draft_id):
+    """Claim a draft for the current user — locks it from others."""
+    try:
+        draft = get_draft(draft_id)
+        if not draft:
+            return jsonify({'error': 'Draft not found'}), 404
+        if draft.get('claimed_by') and draft['claimed_by'] != session.get('user', ''):
+            return jsonify({'error': f'Already claimed by {ADMIN_DISPLAY.get(draft["claimed_by"], draft["claimed_by"])}'}), 409
+        user = session.get('user', 'unknown')
+        update_draft(draft_id, {
+            'claimed_by': user,
+            'claimed_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        })
+        return jsonify({'ok': True, 'claimed_by': user})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/drafts/<draft_id>/unclaim', methods=['POST'])
+@login_required
+def unclaim_draft(draft_id):
+    """Release a claimed draft."""
+    try:
+        draft = get_draft(draft_id)
+        if not draft:
+            return jsonify({'error': 'Draft not found'}), 404
+        if draft.get('claimed_by') and draft['claimed_by'] != session.get('user', ''):
+            return jsonify({'error': 'Not your claim'}), 403
+        update_draft(draft_id, {'claimed_by': '', 'claimed_at': ''})
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/drafts/<draft_id>/urgency', methods=['POST'])
+@login_required
+def set_urgency(draft_id):
+    """Set urgency label on a draft."""
+    try:
+        data = request.get_json() or {}
+        urgency = data.get('urgency', 'not_urgent')
+        if urgency not in ('not_urgent', 'moderate', 'urgent'):
+            return jsonify({'error': 'Invalid urgency. Use: not_urgent, moderate, urgent'}), 400
+        if not get_draft(draft_id):
+            return jsonify({'error': 'Draft not found'}), 404
+        update_draft(draft_id, {'urgency': urgency, 'urgency_label': session.get('user', 'unknown')})
+        return jsonify({'ok': True, 'urgency': urgency})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/drafts/<draft_id>/regenerate', methods=['POST'])
+@login_required
+def regenerate_draft(draft_id):
+    """Request regeneration of a draft response."""
+    try:
+        draft = get_draft(draft_id)
+        if not draft:
+            return jsonify({'error': 'Draft not found'}), 404
+        # Mark as needing regeneration — the email processing pipeline picks this up
+        update_draft(draft_id, {'status': 'regenerating'})
+        return jsonify({'ok': True, 'message': 'Regeneration requested'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/escalations/stale', methods=['GET'])
+@login_required
+def stale_escalations():
+    """Return escalations older than 24 hours that haven't been resolved."""
+    try:
+        drafts = load_drafts()
+        stale = []
+        now = datetime.now()
+        for d in drafts:
+            if d.get('status') != 'escalated':
+                continue
+            esc_at = d.get('escalated_at', '')
+            if not esc_at:
+                continue
+            try:
+                esc_time = datetime.strptime(esc_at, '%Y-%m-%d %H:%M:%S')
+                hours = (now - esc_time).total_seconds() / 3600
+                if hours >= 24:
+                    d['hours_stale'] = round(hours, 1)
+                    stale.append(d)
+            except ValueError:
+                continue
+        return jsonify({'stale': stale, 'count': len(stale)})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1687,11 +1916,12 @@ def support_approve(draft_id):
         draft = get_draft(draft_id)
         if not draft:
             return jsonify({'error': 'Draft not found'}), 404
-        updates = {'was_edited': False, 'status': 'approved', 'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        approver = session.get('user', 'support_agent')
+        updates = {'was_edited': False, 'status': 'approved', 'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'approved_by': approver}
         if not draft.get('original_draft_body'):
             updates['original_draft_body'] = draft.get('draft_body', '')
         update_draft(draft_id, updates)
-        return jsonify({'ok': True, 'status': 'approved'})
+        return jsonify({'ok': True, 'status': 'approved', 'approved_by': approver})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1736,15 +1966,17 @@ def support_edit(draft_id):
         draft = get_draft(draft_id)
         if not draft:
             return jsonify({'error': 'Draft not found'}), 404
+        approver = session.get('user', 'support_agent')
         updates = {
             'draft_body': draft_text, 'was_edited': True, 'status': 'approved',
             'edited_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'approved_by': approver,
         }
         if not draft.get('original_draft_body'):
             updates['original_draft_body'] = draft.get('draft_body', '')
         update_draft(draft_id, updates)
-        return jsonify({'ok': True, 'status': 'edited_and_approved'})
+        return jsonify({'ok': True, 'status': 'edited_and_approved', 'approved_by': approver})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
