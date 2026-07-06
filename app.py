@@ -336,89 +336,106 @@ SUPPORT_TEMPLATE = '''
 <head>
     <title>Ennie Support — Emails</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            min-height: 100vh; padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #000; background-image: radial-gradient(ellipse at 20% 50%, rgba(88,28,135,0.15) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(15,23,42,0.8) 0%, transparent 60%);
+            min-height: 100vh; padding: 20px; color: rgba(255,255,255,0.9);
         }
         .container { max-width: 1000px; margin: 0 auto; }
         .header {
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.04); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border-radius: 16px; padding: 24px; margin-bottom: 24px; text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
         }
-        .header h1 { color: #1a1a1a; font-size: 28px; margin: 0 0 8px 0; font-weight: 600; }
-        .header p { color: #666; margin: 0; }
+        .header h1 { color: #fff; font-size: 28px; margin: 0 0 8px 0; font-weight: 600; }
+        .header p { color: rgba(255,255,255,0.5); margin: 0; }
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .stat-card {
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.04); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border-radius: 12px; padding: 16px; text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
         }
-        .stat-number { font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
-        .stat-label { color: #666; font-size: 12px; text-transform: uppercase; font-weight: 500; }
+        .stat-number { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+        .stat-label { color: rgba(255,255,255,0.45); font-size: 12px; text-transform: uppercase; font-weight: 500; letter-spacing: 0.5px; }
         .draft-card {
-            background: rgba(255,255,255,0.95); border-radius: 16px; padding: 20px;
-            margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.05); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border-radius: 16px; padding: 20px;
+            margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+        .draft-card:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08); }
         .draft-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-        .contact h3 { margin: 0 0 4px 0; color: #1a1a1a; font-size: 18px; font-weight: 600; }
-        .contact .email { color: #666; font-size: 14px; }
-        .contact .time { color: #999; font-size: 12px; margin-top: 2px; }
+        .contact h3 { margin: 0 0 4px 0; color: #fff; font-size: 18px; font-weight: 600; }
+        .contact .email { color: rgba(255,255,255,0.45); font-size: 14px; }
+        .contact .time { color: rgba(255,255,255,0.3); font-size: 12px; margin-top: 2px; }
         .tag {
-            background: #007AFF; color: white; padding: 4px 10px; border-radius: 12px;
+            background: rgba(0,122,255,0.2); color: #5AC8FA; padding: 4px 10px; border-radius: 12px;
             font-size: 11px; font-weight: 600; text-transform: capitalize;
         }
-        .subject { font-weight: 600; margin-bottom: 10px; color: #333; font-size: 15px; }
+        .subject { font-weight: 600; margin-bottom: 10px; color: rgba(255,255,255,0.85); font-size: 15px; }
         .original, .reply { padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
-        .original { background: #f8f9fa; border-left: 4px solid #007AFF; }
-        .reply { background: #e8f5e8; border-left: 4px solid #34C759; }
+        .original { background: rgba(0,122,255,0.06); border-left: 4px solid rgba(0,122,255,0.5); }
+        .reply { background: rgba(52,199,89,0.06); border-left: 4px solid rgba(52,199,89,0.5); }
         .original h4, .reply h4 {
-            margin: 0 0 6px 0; font-size: 11px; color: #666;
+            margin: 0 0 6px 0; font-size: 11px; color: rgba(255,255,255,0.4);
             text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;
         }
-        .reply p { white-space: pre-line; line-height: 1.4; color: #2d5a2d; }
+        .original p { color: rgba(255,255,255,0.7); }
+        .reply p { white-space: pre-line; line-height: 1.4; color: rgba(52,199,89,0.9); }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .btn {
-            padding: 8px 14px; border-radius: 6px; border: none;
+            padding: 8px 14px; border-radius: 8px; border: none;
             font-weight: 600; color: white; cursor: pointer; font-size: 13px;
-            transition: all 0.2s;
+            transition: all 0.2s ease; backdrop-filter: blur(10px);
         }
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .btn-approve { background: #34C759; }
-        .btn-edit { background: #007AFF; }
-        .btn-escalate { background: #FF9500; }
-        .btn-reject { background: #FF3B30; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+        .btn-approve { background: rgba(52,199,89,0.8); }
+        .btn-approve:hover { background: rgba(52,199,89,1); }
+        .btn-edit { background: rgba(0,122,255,0.8); }
+        .btn-edit:hover { background: rgba(0,122,255,1); }
+        .btn-escalate { background: rgba(255,149,0,0.8); }
+        .btn-escalate:hover { background: rgba(255,149,0,1); }
+        .btn-reject { background: rgba(255,59,48,0.8); }
+        .btn-reject:hover { background: rgba(255,59,48,1); }
         .inline-edit-form {
-            display: none; margin-top: 12px; padding: 12px; background: #f8f9fa;
-            border-radius: 8px; border: 2px solid #007AFF;
+            display: none; margin-top: 12px; padding: 12px; background: rgba(0,122,255,0.06);
+            border-radius: 8px; border: 1px solid rgba(0,122,255,0.3);
         }
         .inline-edit-form.active { display: block; }
         .edit-textarea {
-            width: 100%; min-height: 120px; padding: 12px; border: 1px solid #ddd;
+            width: 100%; min-height: 120px; padding: 12px; border: 1px solid rgba(255,255,255,0.1);
             border-radius: 6px; font-family: inherit; font-size: 14px; line-height: 1.5;
-            resize: vertical;
+            resize: vertical; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.9);
         }
+        .edit-textarea:focus { outline: none; border-color: rgba(0,122,255,0.5); }
         .edit-actions { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
         .btn-small {
-            padding: 6px 12px; border-radius: 4px; border: none;
+            padding: 6px 12px; border-radius: 6px; border: none;
             font-weight: 500; color: white; cursor: pointer; font-size: 12px;
+            transition: all 0.2s ease;
         }
-        .btn-save { background: #34C759; }
-        .btn-cancel { background: #666; }
+        .btn-save { background: rgba(52,199,89,0.8); }
+        .btn-cancel { background: rgba(255,255,255,0.15); }
         .escalation-form {
-            display: none; margin-top: 12px; padding: 12px; background: #fff3cd;
-            border-radius: 8px; border: 2px solid #FF9500;
+            display: none; margin-top: 12px; padding: 12px; background: rgba(255,149,0,0.06);
+            border-radius: 8px; border: 1px solid rgba(255,149,0,0.3);
         }
         .escalation-form.active { display: block; }
         .escalation-textarea {
-            width: 100%; height: 80px; padding: 8px; border: 1px solid #ddd;
-            border-radius: 4px; font-family: inherit; font-size: 13px;
+            width: 100%; height: 80px; padding: 8px; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px; font-family: inherit; font-size: 13px;
+            background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.9);
         }
-        .escalation-note { font-size: 12px; color: #856404; margin-bottom: 8px; }
+        .escalation-textarea:focus { outline: none; border-color: rgba(255,149,0,0.5); }
+        .escalation-note { font-size: 12px; color: rgba(255,149,0,0.8); margin-bottom: 8px; }
         @media (max-width: 768px) {
             .draft-header { flex-direction: column; align-items: flex-start; }
             .actions { width: 100%; } .btn { flex: 1; }
@@ -427,12 +444,12 @@ SUPPORT_TEMPLATE = '''
 </head>
 <body>
     <div class="container">
-        <nav style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px;border-bottom:1px solid #eee;margin-bottom:24px;">
+        <nav style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:24px;">
             <div style="display:flex;align-items:center;gap:8px;">
                 <span style="font-size:20px;">✦</span>
-                <span style="font-size:17px;font-weight:700;color:#1a1a1a;">Ennie Support</span>
+                <span style="font-size:17px;font-weight:700;color:#fff;">Ennie Support</span>
             </div>
-            <a href="/login" style="font-size:13px;color:#999;text-decoration:none;padding:6px 14px;border:1px solid #ddd;border-radius:8px;">Admin Login</a>
+            <a href="/login" style="font-size:13px;color:rgba(255,255,255,0.4);text-decoration:none;padding:6px 14px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;transition:all 0.2s;">Admin Login</a>
         </nav>
 
         <div class="header">
@@ -460,10 +477,10 @@ SUPPORT_TEMPLATE = '''
         </div>
 
         <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-            <a href="/support?status=all" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'all' %}background:#007AFF;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">All ({{ total_count }})</a>
-            <a href="/support?status=pending" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'pending' %}background:#FF9500;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Pending ({{ pending_count }})</a>
-            <a href="/support?status=escalated" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'escalated' %}background:#FF3B30;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Escalated ({{ escalated_count }})</a>
-            <a href="/support?status=approved" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'approved' %}background:#34C759;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Handled ({{ approved_count }})</a>
+            <a href="/support?status=all" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all 0.2s;{% if status_filter == 'all' %}background:rgba(0,122,255,0.8);color:#fff;{% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);{% endif %}">All ({{ total_count }})</a>
+            <a href="/support?status=pending" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all 0.2s;{% if status_filter == 'pending' %}background:rgba(255,149,0,0.8);color:#fff;{% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);{% endif %}">Pending ({{ pending_count }})</a>
+            <a href="/support?status=escalated" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all 0.2s;{% if status_filter == 'escalated' %}background:rgba(255,59,48,0.8);color:#fff;{% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);{% endif %}">Escalated ({{ escalated_count }})</a>
+            <a href="/support?status=approved" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all 0.2s;{% if status_filter == 'approved' %}background:rgba(52,199,89,0.8);color:#fff;{% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);{% endif %}">Handled ({{ approved_count }})</a>
         </div>
 
         {% for draft in drafts %}
@@ -477,12 +494,12 @@ SUPPORT_TEMPLATE = '''
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                     {% set st = draft.status or 'pending' %}
                     <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;
-                        {% if st == 'pending' %}background:#FFF3E0;color:#E65100;
-                        {% elif st == 'escalated' %}background:#FFEBEE;color:#C62828;
-                        {% elif st == 'approved' or st == 'sent' %}background:#E8F5E9;color:#2E7D32;
-                        {% elif st == 'rejected' %}background:#ECEFF1;color:#546E7A;
-                        {% elif st == 'resolved' %}background:#E3F2FD;color:#1565C0;
-                        {% else %}background:#f0f0f0;color:#666;
+                        {% if st == 'pending' %}background:rgba(255,149,0,0.15);color:#FF9500;
+                        {% elif st == 'escalated' %}background:rgba(255,59,48,0.15);color:#FF3B30;
+                        {% elif st == 'approved' or st == 'sent' %}background:rgba(52,199,89,0.15);color:#34C759;
+                        {% elif st == 'rejected' %}background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);
+                        {% elif st == 'resolved' %}background:rgba(0,122,255,0.15);color:#5AC8FA;
+                        {% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);
                         {% endif %}">{{ st }}</span>
                     <div class="tag">{{ (draft.classification or 'general').replace('_', ' ') }}</div>
                 </div>
@@ -509,7 +526,7 @@ SUPPORT_TEMPLATE = '''
 
                 <div class="escalation-form" id="escalation-form-{{ draft.id }}">
                     <div class="escalation-note">⚠️ Escalating — select who to send to:</div>
-                    <select id="escalation-to-{{ draft.id }}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-bottom:8px;">
+                    <select id="escalation-to-{{ draft.id }}" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:13px;margin-bottom:8px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.9);">
                         <option value="casey" selected>Casey</option>
                         <option value="jakeh">Jakeh</option>
                         <option value="charlie">Charlie</option>
@@ -524,7 +541,7 @@ SUPPORT_TEMPLATE = '''
             </div>
 
             {% if draft.approved_by and draft.status in ('approved', 'sent') %}
-            <div style="font-size:12px;color:#666;margin-bottom:8px;">✅ Approved by <strong>{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px;">✅ Approved by <strong style="color:rgba(255,255,255,0.7);">{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
             {% endif %}
 
             {% if (draft.status or 'pending') == 'pending' %}
@@ -541,8 +558,8 @@ SUPPORT_TEMPLATE = '''
         {% if not drafts %}
         <div style="text-align:center;padding:60px 20px;">
             <div style="font-size:48px;margin-bottom:16px;">✓</div>
-            <h3 style="font-size:20px;font-weight:600;color:#1a1a1a;margin-bottom:8px;">All clear!</h3>
-            <p style="font-size:15px;color:#666;">No emails matching this filter.</p>
+            <h3 style="font-size:20px;font-weight:600;color:#fff;margin-bottom:8px;">All clear!</h3>
+            <p style="font-size:15px;color:rgba(255,255,255,0.45);">No emails matching this filter.</p>
         </div>
         {% endif %}
     </div>
@@ -551,9 +568,9 @@ SUPPORT_TEMPLATE = '''
     function toast(message, type) {
       const el = document.createElement('div');
       el.textContent = message;
-      el.style.cssText = `position:fixed;top:20px;right:20px;z-index:1000;background:#333;color:white;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,0.15);transition:all 0.3s ease;opacity:0;transform:translateY(-20px);`;
-      if (type === 'success') el.style.background = '#34C759';
-      if (type === 'error') el.style.background = '#FF3B30';
+      el.style.cssText = `position:fixed;top:20px;right:20px;z-index:1000;background:rgba(255,255,255,0.1);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);color:white;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);transition:all 0.3s ease;opacity:0;transform:translateY(-20px);`;
+      if (type === 'success') { el.style.background = 'rgba(52,199,89,0.85)'; el.style.borderColor = 'rgba(52,199,89,0.3)'; }
+      if (type === 'error') { el.style.background = 'rgba(255,59,48,0.85)'; el.style.borderColor = 'rgba(255,59,48,0.3)'; }
       document.body.appendChild(el);
       requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
       setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(-20px)'; setTimeout(() => el.remove(), 300); }, 3000);
@@ -821,136 +838,164 @@ def dashboard():
 <head>
     <title>Ennie Support Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            min-height: 100vh; padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #000; background-image: radial-gradient(ellipse at 20% 50%, rgba(88,28,135,0.15) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(15,23,42,0.8) 0%, transparent 60%);
+            min-height: 100vh; padding: 20px; color: rgba(255,255,255,0.9);
         }
         .container { max-width: 1000px; margin: 0 auto; }
         .header {
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.04); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border-radius: 16px; padding: 24px; margin-bottom: 24px; text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
         }
-        .header h1 { color: #1a1a1a; font-size: 28px; margin: 0 0 8px 0; font-weight: 600; }
-        .header p { color: #666; margin: 0; }
+        .header h1 { color: #fff; font-size: 28px; margin: 0 0 8px 0; font-weight: 600; letter-spacing: -0.3px; }
+        .header p { color: rgba(255,255,255,0.5); margin: 0; }
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .stat-card {
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.04); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
             border-radius: 12px; padding: 16px; text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+            transition: transform 0.2s ease;
         }
-        .stat-number { font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
-        .stat-label { color: #666; font-size: 12px; text-transform: uppercase; font-weight: 500; }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-number { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+        .stat-label { color: rgba(255,255,255,0.45); font-size: 12px; text-transform: uppercase; font-weight: 500; letter-spacing: 0.5px; }
         .draft-card {
-            background: rgba(255,255,255,0.95); border-radius: 16px; padding: 20px;
-            margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.05); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border-radius: 16px; padding: 20px;
+            margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+        .draft-card:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08); }
         .draft-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-        .contact h3 { margin: 0 0 4px 0; color: #1a1a1a; font-size: 18px; font-weight: 600; }
-        .contact .email { color: #666; font-size: 14px; }
-        .contact .time { color: #999; font-size: 12px; margin-top: 2px; }
+        .contact h3 { margin: 0 0 4px 0; color: #fff; font-size: 18px; font-weight: 600; }
+        .contact .email { color: rgba(255,255,255,0.45); font-size: 14px; }
+        .contact .time { color: rgba(255,255,255,0.3); font-size: 12px; margin-top: 2px; }
         .tag {
-            background: #007AFF; color: white; padding: 4px 10px; border-radius: 12px;
+            background: rgba(0,122,255,0.2); color: #5AC8FA; padding: 4px 10px; border-radius: 12px;
             font-size: 11px; font-weight: 600; text-transform: capitalize;
         }
-        .tag.event_question, .tag.event_booking_issue { background: #34C759; }
-        .tag.recording_access { background: #AF52DE; }
-        .subject { font-weight: 600; margin-bottom: 10px; color: #333; font-size: 15px; }
+        .tag.event_question, .tag.event_booking_issue { background: rgba(52,199,89,0.2); color: #34C759; }
+        .tag.recording_access { background: rgba(175,82,222,0.2); color: #BF5AF2; }
+        .subject { font-weight: 600; margin-bottom: 10px; color: rgba(255,255,255,0.85); font-size: 15px; }
         .original, .reply { padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
-        .original { background: #f8f9fa; border-left: 4px solid #007AFF; }
-        .reply { background: #e8f5e8; border-left: 4px solid #34C759; }
+        .original { background: rgba(0,122,255,0.06); border-left: 4px solid rgba(0,122,255,0.5); }
+        .original p { color: rgba(255,255,255,0.7); }
+        .reply { background: rgba(52,199,89,0.06); border-left: 4px solid rgba(52,199,89,0.5); }
         .original h4, .reply h4 {
-            margin: 0 0 6px 0; font-size: 11px; color: #666;
+            margin: 0 0 6px 0; font-size: 11px; color: rgba(255,255,255,0.4);
             text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;
         }
-        .reply p { white-space: pre-line; line-height: 1.4; color: #2d5a2d; }
+        .reply p { white-space: pre-line; line-height: 1.4; color: rgba(52,199,89,0.9); }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .btn {
-            padding: 8px 14px; border-radius: 6px; border: none;
+            padding: 8px 14px; border-radius: 8px; border: none;
             font-weight: 600; color: white; cursor: pointer; font-size: 13px;
-            transition: all 0.2s;
+            transition: all 0.2s ease; backdrop-filter: blur(10px);
         }
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .btn-approve { background: #34C759; }
-        .btn-edit { background: #007AFF; }
-        .btn-escalate { background: #FF9500; }
-        .btn-reject { background: #FF3B30; }
-        .user-link { color: inherit; text-decoration: none; cursor: pointer; }
-        .user-link:hover { text-decoration: underline; color: #007AFF; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+        .btn-approve { background: rgba(52,199,89,0.8); }
+        .btn-approve:hover { background: rgba(52,199,89,1); }
+        .btn-edit { background: rgba(0,122,255,0.8); }
+        .btn-edit:hover { background: rgba(0,122,255,1); }
+        .btn-escalate { background: rgba(255,149,0,0.8); }
+        .btn-escalate:hover { background: rgba(255,149,0,1); }
+        .btn-reject { background: rgba(255,59,48,0.8); }
+        .btn-reject:hover { background: rgba(255,59,48,1); }
+        .user-link { color: inherit; text-decoration: none; cursor: pointer; transition: color 0.2s; }
+        .user-link:hover { text-decoration: underline; color: #5AC8FA; }
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             display: flex; align-items: center; justify-content: center;
             opacity: 0; visibility: hidden; transition: all 0.3s ease;
         }
         .modal-overlay.active { opacity: 1; visibility: visible; }
         .modal {
-            background: white; border-radius: 16px; max-width: 800px; width: 90vw; max-height: 80vh;
-            overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            background: rgba(30,30,30,0.95); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border-radius: 16px; max-width: 800px; width: 90vw; max-height: 80vh;
+            overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
             transform: translateY(20px) scale(0.95); transition: all 0.3s ease;
         }
         .modal-overlay.active .modal { transform: translateY(0) scale(1); }
         .modal-header {
-            padding: 20px 24px; border-bottom: 1px solid #eee;
+            padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.08);
             display: flex; justify-content: between; align-items: center;
         }
-        .modal-title { margin: 0; font-size: 20px; font-weight: 600; }
+        .modal-title { margin: 0; font-size: 20px; font-weight: 600; color: #fff; }
         .modal-close {
             background: none; border: none; font-size: 24px; cursor: pointer;
-            color: #666; margin-left: auto;
+            color: rgba(255,255,255,0.5); margin-left: auto; transition: color 0.2s;
         }
+        .modal-close:hover { color: #fff; }
         .modal-body { padding: 24px; }
         .lookup-card {
-            background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 16px;
-            border-left: 4px solid #007AFF;
+            background: rgba(255,255,255,0.04); border-radius: 12px; padding: 16px; margin-bottom: 16px;
+            border-left: 4px solid rgba(0,122,255,0.5);
         }
-        .lookup-card h4 { margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .lookup-card h4 { margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px; color: #fff; }
         .lookup-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .lookup-key { font-weight: 600; color: #666; }
-        .lookup-val { color: #333; }
+        .lookup-key { font-weight: 600; color: rgba(255,255,255,0.45); }
+        .lookup-val { color: rgba(255,255,255,0.8); }
         .tag-list { display: flex; gap: 6px; flex-wrap: wrap; }
-        .tag { 
-            background: #007AFF; color: white; padding: 2px 8px; border-radius: 12px;
-            font-size: 11px; font-weight: 500;
-        }
-        .not-found { color: #999; font-style: italic; }
+        .not-found { color: rgba(255,255,255,0.35); font-style: italic; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .inline-edit-form { 
-            display: none; margin-top: 12px; padding: 12px; background: #f8f9fa; 
-            border-radius: 8px; border: 2px solid #007AFF;
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .inline-edit-form {
+            display: none; margin-top: 12px; padding: 12px; background: rgba(0,122,255,0.06);
+            border-radius: 8px; border: 1px solid rgba(0,122,255,0.3);
         }
         .inline-edit-form.active { display: block; }
         .edit-textarea {
-            width: 100%; min-height: 120px; padding: 12px; border: 1px solid #ddd;
+            width: 100%; min-height: 120px; padding: 12px; border: 1px solid rgba(255,255,255,0.1);
             border-radius: 6px; font-family: inherit; font-size: 14px; line-height: 1.5;
-            resize: vertical;
+            resize: vertical; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.9);
         }
+        .edit-textarea:focus { outline: none; border-color: rgba(0,122,255,0.5); }
         .edit-actions {
             display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end;
         }
         .btn-small {
-            padding: 6px 12px; border-radius: 4px; border: none;
+            padding: 6px 12px; border-radius: 6px; border: none;
             font-weight: 500; color: white; cursor: pointer; font-size: 12px;
+            transition: all 0.2s ease;
         }
-        .btn-save { background: #34C759; }
-        .btn-cancel { background: #666; }
+        .btn-save { background: rgba(52,199,89,0.8); }
+        .btn-save:hover { background: rgba(52,199,89,1); }
+        .btn-cancel { background: rgba(255,255,255,0.15); }
+        .btn-cancel:hover { background: rgba(255,255,255,0.25); }
         .escalation-form {
-            display: none; margin-top: 12px; padding: 12px; background: #fff3cd;
-            border-radius: 8px; border: 2px solid #FF9500;
+            display: none; margin-top: 12px; padding: 12px; background: rgba(255,149,0,0.06);
+            border-radius: 8px; border: 1px solid rgba(255,149,0,0.3);
         }
         .escalation-form.active { display: block; }
         .escalation-textarea {
-            width: 100%; height: 80px; padding: 8px; border: 1px solid #ddd;
-            border-radius: 4px; font-family: inherit; font-size: 13px;
+            width: 100%; height: 80px; padding: 8px; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px; font-family: inherit; font-size: 13px;
+            background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.9);
         }
-        .escalation-note { font-size: 12px; color: #856404; margin-bottom: 8px; }
+        .escalation-textarea:focus { outline: none; border-color: rgba(255,149,0,0.5); }
+        .escalation-note { font-size: 12px; color: rgba(255,149,0,0.8); margin-bottom: 8px; }
         .live-indicator {
-            position: fixed; top: 16px; right: 16px; background: #34C759;
-            color: white; padding: 6px 10px; border-radius: 16px; font-size: 11px; font-weight: 600;
+            position: fixed; top: 16px; right: 16px;
+            background: rgba(52,199,89,0.15); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            color: #34C759; padding: 6px 12px; border-radius: 16px; font-size: 11px; font-weight: 600;
+            border: 1px solid rgba(52,199,89,0.2);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .live-dot {
+            width: 6px; height: 6px; border-radius: 50%; background: #34C759;
+            animation: pulse 2s ease-in-out infinite;
         }
         @media (max-width: 768px) {
             .draft-header { flex-direction: column; align-items: flex-start; }
@@ -959,22 +1004,22 @@ def dashboard():
     </style>
 </head>
 <body>
-    <div class="live-indicator">LIVE</div>
+    <div class="live-indicator"><span class="live-dot"></span>LIVE</div>
     <div class="container">
         <!-- Nav bar -->
-        <nav style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px;border-bottom:1px solid #eee;margin-bottom:24px;">
+        <nav style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:24px;">
             <div style="display:flex;align-items:center;gap:8px;">
                 <span style="font-size:20px;">✦</span>
-                <span style="font-size:17px;font-weight:700;color:#1a1a1a;">Ennie Support</span>
+                <span style="font-size:17px;font-weight:700;color:#fff;">Ennie Support</span>
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                <a href="/" style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:#007AFF;color:#fff;">Dashboard</a>
-                <a href="/escalations" style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:#f0f0f0;color:#333;">Escalations</a>
-                <a href="/lookup" style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:#f0f0f0;color:#333;">Lookup</a>
+                <a href="/" style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:rgba(0,122,255,0.8);color:#fff;">Dashboard</a>
+                <a href="/escalations" style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);transition:all 0.2s;">Escalations</a>
+                <a href="/lookup" style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);transition:all 0.2s;">Lookup</a>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
-                <span style="font-size:13px;color:#666;">{{ display_name }}</span>
-                <a href="/logout" style="font-size:13px;color:#999;text-decoration:none;padding:6px 14px;border:1px solid #ddd;border-radius:8px;">Sign Out</a>
+                <span style="font-size:13px;color:rgba(255,255,255,0.5);">{{ display_name }}</span>
+                <a href="/logout" style="font-size:13px;color:rgba(255,255,255,0.4);text-decoration:none;padding:6px 14px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;transition:all 0.2s;">Sign Out</a>
             </div>
         </nav>
 
@@ -1004,10 +1049,10 @@ def dashboard():
 
         <!-- Filter tabs -->
         <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-            <a href="/?status=all" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'all' %}background:#007AFF;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">All ({{ total_count }})</a>
-            <a href="/?status=pending" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'pending' %}background:#FF9500;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Pending ({{ pending_count }})</a>
-            <a href="/?status=escalated" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'escalated' %}background:#FF3B30;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Escalated ({{ escalated_count }})</a>
-            <a href="/?status=approved" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;{% if status_filter == 'approved' %}background:#34C759;color:#fff;{% else %}background:#f0f0f0;color:#333;{% endif %}">Handled ({{ approved_count }})</a>
+            <a href="/?status=all" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all 0.2s;{% if status_filter == 'all' %}background:rgba(0,122,255,0.8);color:#fff;{% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);{% endif %}">All ({{ total_count }})</a>
+            <a href="/?status=pending" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all 0.2s;{% if status_filter == 'pending' %}background:rgba(255,149,0,0.8);color:#fff;{% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);{% endif %}">Pending ({{ pending_count }})</a>
+            <a href="/?status=escalated" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all 0.2s;{% if status_filter == 'escalated' %}background:rgba(255,59,48,0.8);color:#fff;{% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);{% endif %}">Escalated ({{ escalated_count }})</a>
+            <a href="/?status=approved" style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all 0.2s;{% if status_filter == 'approved' %}background:rgba(52,199,89,0.8);color:#fff;{% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);{% endif %}">Handled ({{ approved_count }})</a>
         </div>
         
         {% for draft in drafts %}
@@ -1021,16 +1066,16 @@ def dashboard():
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                     {% set st = draft.status or 'pending' %}
                     <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;
-                        {% if st == 'pending' %}background:#FFF3E0;color:#E65100;
-                        {% elif st == 'escalated' %}background:#FFEBEE;color:#C62828;
-                        {% elif st == 'approved' or st == 'sent' %}background:#E8F5E9;color:#2E7D32;
-                        {% elif st == 'rejected' %}background:#ECEFF1;color:#546E7A;
-                        {% elif st == 'resolved' %}background:#E3F2FD;color:#1565C0;
-                        {% elif st == 'regenerating' %}background:#F3E8FF;color:#7C3AED;
-                        {% else %}background:#f0f0f0;color:#666;
+                        {% if st == 'pending' %}background:rgba(255,149,0,0.15);color:#FF9500;
+                        {% elif st == 'escalated' %}background:rgba(255,59,48,0.15);color:#FF3B30;
+                        {% elif st == 'approved' or st == 'sent' %}background:rgba(52,199,89,0.15);color:#34C759;
+                        {% elif st == 'rejected' %}background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);
+                        {% elif st == 'resolved' %}background:rgba(0,122,255,0.15);color:#5AC8FA;
+                        {% elif st == 'regenerating' %}background:rgba(139,92,246,0.15);color:#8B5CF6;
+                        {% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);
                         {% endif %}">{{ st }}</span>
-                    {% if draft.urgency == 'urgent' %}<span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#FFEBEE;color:#C62828;">🔴 Urgent</span>{% endif %}
-                    {% if draft.urgency == 'moderate' %}<span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#FFF8E1;color:#F57F17;">🟡 Moderate</span>{% endif %}
+                    {% if draft.urgency == 'urgent' %}<span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:rgba(255,59,48,0.15);color:#FF3B30;">🔴 Urgent</span>{% endif %}
+                    {% if draft.urgency == 'moderate' %}<span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:rgba(255,149,0,0.15);color:#FF9500;">🟡 Moderate</span>{% endif %}
                     <div class="tag {{ draft.classification }}">{{ draft.classification.replace('_', ' ') }}</div>
                 </div>
             </div>
@@ -1058,7 +1103,7 @@ def dashboard():
                 <!-- Inline Escalation Form -->
                 <div class="escalation-form" id="escalation-form-{{ draft.id }}">
                     <div class="escalation-note">⚠️ Escalating — select who to send to:</div>
-                    <select id="escalation-to-{{ draft.id }}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-bottom:8px;">
+                    <select id="escalation-to-{{ draft.id }}" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:13px;margin-bottom:8px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.9);">
                         <option value="casey" selected>Casey</option>
                         <option value="jakeh">Jakeh</option>
                         <option value="charlie">Charlie</option>
@@ -1066,7 +1111,7 @@ def dashboard():
                     </select>
                     <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Add context (optional)"></textarea>
                     <div class="edit-actions">
-                        <button class="btn-small" style="background: #FF9500;" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
+                        <button class="btn-small" style="background:rgba(255,149,0,0.8);" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
                         <button class="btn-small btn-cancel" onclick="cancelEscalation('{{ draft.id }}')">Cancel</button>
                     </div>
                 </div>
@@ -1074,11 +1119,11 @@ def dashboard():
 
             {# ── Urgency selector ── #}
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                <span style="font-size:12px;color:#666;font-weight:600;">URGENCY:</span>
-                <select onchange="setUrgency('{{ draft.id }}', this.value)" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-weight:600;
-                    {% if draft.urgency == 'urgent' %}background:#FFEBEE;color:#C62828;
-                    {% elif draft.urgency == 'moderate' %}background:#FFF8E1;color:#F57F17;
-                    {% else %}background:#E8F5E9;color:#2E7D32;{% endif %}">
+                <span style="font-size:12px;color:rgba(255,255,255,0.45);font-weight:600;">URGENCY:</span>
+                <select onchange="setUrgency('{{ draft.id }}', this.value)" style="padding:4px 8px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;font-weight:600;
+                    {% if draft.urgency == 'urgent' %}background:rgba(255,59,48,0.15);color:#FF3B30;
+                    {% elif draft.urgency == 'moderate' %}background:rgba(255,149,0,0.15);color:#FF9500;
+                    {% else %}background:rgba(52,199,89,0.15);color:#34C759;{% endif %}">
                     <option value="not_urgent" {% if draft.urgency != 'moderate' and draft.urgency != 'urgent' %}selected{% endif %}>Not Urgent</option>
                     <option value="moderate" {% if draft.urgency == 'moderate' %}selected{% endif %}>Moderate</option>
                     <option value="urgent" {% if draft.urgency == 'urgent' %}selected{% endif %}>Urgent</option>
@@ -1089,36 +1134,36 @@ def dashboard():
 
             {# ── Star Rating ── #}
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
-                <span style="font-size:12px;color:#666;font-weight:600;">RATE DRAFT:</span>
+                <span style="font-size:12px;color:rgba(255,255,255,0.45);font-weight:600;">RATE DRAFT:</span>
                 {% for star in [1,2,3,4,5] %}
-                <span onclick="rateDraft('{{ draft.id }}', {{ star }})" style="cursor:pointer;font-size:20px;{% if draft.rating and draft.rating >= star %}color:#FFB800;{% else %}color:#ddd;{% endif %}" title="{{ star }} star{{ 's' if star > 1 else '' }}">★</span>
+                <span onclick="rateDraft('{{ draft.id }}', {{ star }})" style="cursor:pointer;font-size:20px;transition:transform 0.15s;{% if draft.rating and draft.rating >= star %}color:#FFB800;{% else %}color:rgba(255,255,255,0.15);{% endif %}" title="{{ star }} star{{ 's' if star > 1 else '' }}">★</span>
                 {% endfor %}
-                {% if draft.rating %}<span style="font-size:11px;color:#999;margin-left:4px;">{{ draft.rating }}/5{% if draft.rated_by %} by {{ draft.rated_by }}{% endif %}</span>{% endif %}
+                {% if draft.rating %}<span style="font-size:11px;color:rgba(255,255,255,0.35);margin-left:4px;">{{ draft.rating }}/5{% if draft.rated_by %} by {{ draft.rated_by }}{% endif %}</span>{% endif %}
             </div>
 
             {# ── Approved by info ── #}
             {% if draft.approved_by and draft.status in ('approved', 'sent') %}
-            <div style="font-size:12px;color:#666;margin-bottom:8px;">✅ Approved by <strong>{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px;">✅ Approved by <strong style="color:rgba(255,255,255,0.7);">{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
             {% endif %}
 
             {# ── Claim/Action buttons ── #}
             {% set st = draft.status or 'pending' %}
             {% if st in ('pending', 'regenerating') %}
                 {% if draft.claimed_by and draft.claimed_by != current_user %}
-                <div style="padding:10px;background:#FFF3E0;border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:#E65100;">
+                <div style="padding:10px;background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.2);border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:#FF9500;">
                     🔒 Claimed by {{ draft.claimed_by }}
                 </div>
                 {% else %}
                 <div class="actions">
                     <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
                     <button class="btn btn-edit" onclick="showEditForm('{{ draft.id }}')">Edit</button>
-                    <button class="btn" style="background:#8B5CF6;" onclick="regenerateDraft('{{ draft.id }}')">🔄 Regenerate</button>
+                    <button class="btn" style="background:rgba(139,92,246,0.8);" onclick="regenerateDraft('{{ draft.id }}')">🔄 Regenerate</button>
                     <button class="btn btn-escalate" onclick="showEscalationForm('{{ draft.id }}')">Escalate</button>
                     <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
                     {% if not draft.claimed_by %}
-                    <button class="btn" style="background:#007AFF;" onclick="claimDraft('{{ draft.id }}')">🔒 Claim</button>
+                    <button class="btn" style="background:rgba(0,122,255,0.8);" onclick="claimDraft('{{ draft.id }}')">🔒 Claim</button>
                     {% else %}
-                    <button class="btn" style="background:#666;" onclick="unclaimDraft('{{ draft.id }}')">Unclaim</button>
+                    <button class="btn" style="background:rgba(255,255,255,0.15);" onclick="unclaimDraft('{{ draft.id }}')">Unclaim</button>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -1129,11 +1174,11 @@ def dashboard():
         {% if not drafts %}
         <div style="text-align:center;padding:60px 20px;">
             <div style="font-size:48px;margin-bottom:16px;">✓</div>
-            <h3 style="font-size:20px;font-weight:600;color:#1a1a1a;margin-bottom:8px;">All clear!</h3>
-            <p style="font-size:15px;color:#666;">No pending support drafts right now.</p>
+            <h3 style="font-size:20px;font-weight:600;color:#fff;margin-bottom:8px;">All clear!</h3>
+            <p style="font-size:15px;color:rgba(255,255,255,0.45);">No pending support drafts right now.</p>
             <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;">
-                <a href="/escalations" style="padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;background:#FF9500;color:#fff;">View Escalations</a>
-                <a href="/lookup" style="padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;background:#f0f0f0;color:#333;">Lookup User</a>
+                <a href="/escalations" style="padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;background:rgba(255,149,0,0.8);color:#fff;transition:all 0.2s;">View Escalations</a>
+                <a href="/lookup" style="padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);transition:all 0.2s;">Lookup User</a>
             </div>
         </div>
         {% endif %}
@@ -1148,8 +1193,8 @@ def dashboard():
             </div>
             <div class="modal-body">
                 <div id="lookup-loading" style="text-align: center; padding: 40px;">
-                    <div style="display: inline-block; width: 32px; height: 32px; border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #007AFF; animation: spin 1s linear infinite;"></div>
-                    <p style="margin-top: 16px; color: #666;">Loading user data...</p>
+                    <div style="display: inline-block; width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top: 3px solid #5AC8FA; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 16px; color: rgba(255,255,255,0.45);">Loading user data...</p>
                 </div>
                 <div id="lookup-results" style="display: none;"></div>
             </div>
@@ -1166,13 +1211,14 @@ function toast(message, type) {
   el.className = 'toast' + (type ? ' toast-' + type : '');
   el.style.cssText = `
     position: fixed; top: 20px; right: 20px; z-index: 1000;
-    background: #333; color: white; padding: 12px 16px;
-    border-radius: 8px; font-size: 14px; font-weight: 500;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    background: rgba(255,255,255,0.1); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+    color: white; padding: 12px 16px;
+    border-radius: 10px; font-size: 14px; font-weight: 500;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
     transition: all 0.3s ease; opacity: 0; transform: translateY(-20px);
   `;
-  if (type === 'success') el.style.background = '#34C759';
-  if (type === 'error') el.style.background = '#FF3B30';
+  if (type === 'success') { el.style.background = 'rgba(52,199,89,0.85)'; el.style.borderColor = 'rgba(52,199,89,0.3)'; }
+  if (type === 'error') { el.style.background = 'rgba(255,59,48,0.85)'; el.style.borderColor = 'rgba(255,59,48,0.3)'; }
   
   document.body.appendChild(el);
   requestAnimationFrame(() => {
@@ -1310,7 +1356,7 @@ function regenerateDraft(id) {
   const card = document.querySelector('[data-draft-id="' + id + '"]');
   if (card) {
     const actions = card.querySelector('.actions');
-    if (actions) actions.innerHTML = '<span style="color:#8B5CF6;font-weight:600;font-size:13px;">🔄 Regenerating... please wait</span>';
+    if (actions) actions.innerHTML = '<span style="color:#8B5CF6;font-weight:600;font-size:13px;opacity:0.9;">🔄 Regenerating... please wait</span>';
   }
   apiPost('/api/drafts/' + id + '/regenerate').then(res => {
     if (res.ok) { toast('Draft regenerated!', 'success'); location.reload(); }
@@ -1419,9 +1465,9 @@ function renderLookupData(data) {
     if (kajabi.products && kajabi.products.length) {
       html += '<div class="lookup-row"><span class="lookup-key">Courses</span><div>';
       kajabi.products.forEach(product => {
-        html += `<div style="margin-bottom: 8px; padding: 8px; background: #f0f8ff; border-radius: 6px;">`;
-        html += `<div style="font-weight: 600; margin-bottom: 4px;">${product.name}</div>`;
-        html += `<div style="font-size: 13px; color: #666;">`;
+        html += `<div style="margin-bottom: 8px; padding: 8px; background: rgba(0,122,255,0.06); border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);">`;
+        html += `<div style="font-weight: 600; margin-bottom: 4px; color: #fff;">${product.name}</div>`;
+        html += `<div style="font-size: 13px; color: rgba(255,255,255,0.5);">`;
         html += `Progress: <strong>${product.progress}</strong> • `;
         html += `Logins: <strong>${product.logins}</strong>`;
         if (product.last_activity) {
@@ -1441,9 +1487,9 @@ function renderLookupData(data) {
   html += '<h4>🎫 Eventbrite</h4>';
   if (eventbrite.found && eventbrite.orders.length) {
     eventbrite.orders.forEach(order => {
-      html += '<div style="padding: 8px 0; border-bottom: 1px solid #eee; margin-bottom: 8px;">';
-      html += `<div style="font-weight: 600; margin-bottom: 4px;">${order.event_name}</div>`;
-      html += `<div style="font-size: 13px; color: #666;">${order.event_date} • ${order.ticket_type} • ${order.status}</div>`;
+      html += '<div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 8px;">';
+      html += `<div style="font-weight: 600; margin-bottom: 4px; color: #fff;">${order.event_name}</div>`;
+      html += `<div style="font-size: 13px; color: rgba(255,255,255,0.5);">${order.event_date} • ${order.ticket_type} • ${order.status}</div>`;
       html += '</div>';
     });
   } else {
