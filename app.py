@@ -73,6 +73,8 @@ def init_db():
         "urgency TEXT DEFAULT 'not_urgent'",
         "urgency_label TEXT DEFAULT ''",
         "hidden_trace_id TEXT DEFAULT ''",
+        "rating INTEGER DEFAULT 0",
+        "rated_by TEXT DEFAULT ''",
     ]:
         col_name = col_def.split()[0]
         try:
@@ -142,7 +144,8 @@ def save_draft(draft):
                 escalation_response, rejection_notes, committee_model, committee_confidence,
                 was_edited, created_at, approved_at, edited_at, rejected_at, resolved_at,
                 re_escalated_at, sent_at,
-                approved_by, claimed_by, claimed_at, urgency, urgency_label, hidden_trace_id)
+                approved_by, claimed_by, claimed_at, urgency, urgency_label, hidden_trace_id,
+                rating, rated_by)
             VALUES (%(id)s, %(thread_id)s, %(message_id)s, %(from_email)s, %(from_name)s,
                 %(subject)s, %(body_original)s, %(draft_body)s, %(original_draft_body)s,
                 %(classification)s, %(status)s, %(escalate)s, %(escalation_reason)s,
@@ -150,7 +153,8 @@ def save_draft(draft):
                 %(escalation_response)s, %(rejection_notes)s, %(committee_model)s,
                 %(committee_confidence)s, %(was_edited)s, %(created_at)s, %(approved_at)s,
                 %(edited_at)s, %(rejected_at)s, %(resolved_at)s, %(re_escalated_at)s, %(sent_at)s,
-                %(approved_by)s, %(claimed_by)s, %(claimed_at)s, %(urgency)s, %(urgency_label)s, %(hidden_trace_id)s)
+                %(approved_by)s, %(claimed_by)s, %(claimed_at)s, %(urgency)s, %(urgency_label)s, %(hidden_trace_id)s,
+                %(rating)s, %(rated_by)s)
             ON CONFLICT (id) DO UPDATE SET
                 status = EXCLUDED.status,
                 draft_body = EXCLUDED.draft_body,
@@ -172,7 +176,9 @@ def save_draft(draft):
                 claimed_at = EXCLUDED.claimed_at,
                 urgency = EXCLUDED.urgency,
                 urgency_label = EXCLUDED.urgency_label,
-                hidden_trace_id = EXCLUDED.hidden_trace_id
+                hidden_trace_id = EXCLUDED.hidden_trace_id,
+                rating = EXCLUDED.rating,
+                rated_by = EXCLUDED.rated_by
         ''', {
             'id': draft.get('id', ''),
             'thread_id': draft.get('thread_id', ''),
@@ -208,6 +214,8 @@ def save_draft(draft):
             'urgency': draft.get('urgency', 'not_urgent'),
             'urgency_label': draft.get('urgency_label', ''),
             'hidden_trace_id': draft.get('hidden_trace_id', ''),
+            'rating': draft.get('rating', 0),
+            'rated_by': draft.get('rated_by', ''),
         })
         cur.close()
         conn.close()
@@ -1079,6 +1087,15 @@ def dashboard():
                 {% if draft.urgency == 'moderate' %}<span style="font-size:11px;">🟡</span>{% endif %}
             </div>
 
+            {# ── Star Rating ── #}
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+                <span style="font-size:12px;color:#666;font-weight:600;">RATE DRAFT:</span>
+                {% for star in [1,2,3,4,5] %}
+                <span onclick="rateDraft('{{ draft.id }}', {{ star }})" style="cursor:pointer;font-size:20px;{% if draft.rating and draft.rating >= star %}color:#FFB800;{% else %}color:#ddd;{% endif %}" title="{{ star }} star{{ 's' if star > 1 else '' }}">★</span>
+                {% endfor %}
+                {% if draft.rating %}<span style="font-size:11px;color:#999;margin-left:4px;">{{ draft.rating }}/5{% if draft.rated_by %} by {{ draft.rated_by }}{% endif %}</span>{% endif %}
+            </div>
+
             {# ── Approved by info ── #}
             {% if draft.approved_by and draft.status in ('approved', 'sent') %}
             <div style="font-size:12px;color:#666;margin-bottom:8px;">✅ Approved by <strong>{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
@@ -1091,18 +1108,18 @@ def dashboard():
                 <div style="padding:10px;background:#FFF3E0;border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:#E65100;">
                     🔒 Claimed by {{ draft.claimed_by }}
                 </div>
-                {% elif draft.claimed_by == current_user %}
+                {% else %}
                 <div class="actions">
                     <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
                     <button class="btn btn-edit" onclick="showEditForm('{{ draft.id }}')">Edit</button>
                     <button class="btn" style="background:#8B5CF6;" onclick="regenerateDraft('{{ draft.id }}')">🔄 Regenerate</button>
                     <button class="btn btn-escalate" onclick="showEscalationForm('{{ draft.id }}')">Escalate</button>
                     <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
+                    {% if not draft.claimed_by %}
+                    <button class="btn" style="background:#007AFF;" onclick="claimDraft('{{ draft.id }}')">🔒 Claim</button>
+                    {% else %}
                     <button class="btn" style="background:#666;" onclick="unclaimDraft('{{ draft.id }}')">Unclaim</button>
-                </div>
-                {% else %}
-                <div class="actions">
-                    <button class="btn" style="background:#007AFF;" onclick="claimDraft('{{ draft.id }}')">🙋 Claim</button>
+                    {% endif %}
                 </div>
                 {% endif %}
             {% endif %}
@@ -1276,6 +1293,14 @@ function unclaimDraft(id) {
 function setUrgency(id, urgency) {
   apiPost('/api/drafts/' + id + '/urgency', { urgency: urgency }).then(res => {
     if (res.ok) { toast('Urgency set: ' + urgency.replace('_', ' '), 'success'); location.reload(); }
+    else toast('Error: ' + (res.error || 'Failed'), 'error');
+  }).catch(() => toast('Network error', 'error'));
+}
+
+// ── Star Rating ───────────────────────────────────────────────────────────────────
+function rateDraft(id, rating) {
+  apiPost('/api/drafts/' + id + '/rate', { rating: rating }).then(res => {
+    if (res.ok) { toast(rating + ' star' + (rating > 1 ? 's' : '') + ' — rated!', 'success'); location.reload(); }
     else toast('Error: ' + (res.error || 'Failed'), 'error');
   }).catch(() => toast('Network error', 'error'));
 }
@@ -1588,6 +1613,22 @@ def set_urgency(draft_id):
             return jsonify({'error': 'Draft not found'}), 404
         update_draft(draft_id, {'urgency': urgency, 'urgency_label': session.get('user', 'unknown')})
         return jsonify({'ok': True, 'urgency': urgency})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/drafts/<draft_id>/rate', methods=['POST'])
+@login_required
+def rate_draft(draft_id):
+    """Rate a draft response 1-5 stars for training."""
+    try:
+        data = request.get_json() or {}
+        rating = data.get('rating', 0)
+        if not isinstance(rating, int) or rating < 1 or rating > 5:
+            return jsonify({'error': 'Rating must be 1-5'}), 400
+        if not get_draft(draft_id):
+            return jsonify({'error': 'Draft not found'}), 404
+        update_draft(draft_id, {'rating': rating, 'rated_by': session.get('user', 'unknown')})
+        return jsonify({'ok': True, 'rating': rating})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
