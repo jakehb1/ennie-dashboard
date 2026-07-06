@@ -33,15 +33,15 @@
 
   <div class="esc-header">
     <div>
-      <div style="font-size:15px;font-weight:600;color:#1C1C1E;">
+      <div style="font-size:15px;font-weight:600;color:var(--text-primary);">
         {{ e.sender_name or e.sender_email }}
       </div>
-      <div style="font-size:14px;color:#3C3C43;margin-top:2px;">{{ e.subject }}</div>
+      <div style="font-size:14px;color:var(--text-secondary);margin-top:2px;">{{ e.subject }}</div>
       <div class="esc-meta">{{ e.sender_email }} · Escalated {{ e.created_at[:10] }}</div>
     </div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
       {% if e.escalated_to %}
-      <span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(0,122,255,0.1);color:#007AFF;">→ {{ e.escalated_to | capitalize }}</span>
+      <span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(10,132,255,0.12);color:var(--blue);">→ {{ e.escalated_to | capitalize }}</span>
       {% endif %}
       {% if e.classification %}
       <span class="classification-badge">{{ e.classification | replace('_', ' ') }}</span>
@@ -54,7 +54,7 @@
 
   {% if e.notes %}
   <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);margin:10px 0 5px;">Reviewer notes</div>
-  <div style="font-size:13px;color:#3C3C43;background:rgba(255,149,0,0.06);border-left:3px solid var(--orange);border-radius:8px;padding:10px 14px;">{{ e.notes }}</div>
+  <div style="font-size:13px;color:var(--text-secondary);background:rgba(255,159,10,0.06);border-left:3px solid var(--orange);border-radius:var(--radius-sm);padding:12px 16px;">{{ e.notes }}</div>
   {% endif %}
 
   <div class="draft-actions" style="margin-top:14px;">
@@ -62,10 +62,11 @@
       ✎ Write Response
     </button>
     <div style="display:inline-flex;align-items:center;gap:6px;">
-      <select id="re-escalate-to-{{ e.id }}" style="padding:6px 10px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;font-size:13px;background:#fff;">
-        <option value="jakeh">Jakeh</option>
+      <select id="re-escalate-to-{{ e.id }}" style="padding:6px 10px;border:1px solid var(--glass-border);border-radius:8px;font-size:13px;background:rgba(255,255,255,0.04);color:var(--text-primary);">
         <option value="casey">Casey</option>
+        <option value="jakeh">Jakeh</option>
         <option value="charlie">Charlie</option>
+        <option value="kara">Kara</option>
       </select>
       <button class="btn btn-purple btn-sm" onclick="reEscalate({{ e.id }})">
         ↑ Re-escalate
