@@ -81,12 +81,14 @@ ADMIN_USERS = {
     'jakeh':   os.environ.get('PIN_JAKEH',   '1234'),
     'casey':   os.environ.get('PIN_CASEY',   '1234'),
     'charlie': os.environ.get('PIN_CHARLIE', '1234'),
+    'cara':    os.environ.get('PIN_CARA',    '1234'),
 }
 
 ADMIN_DISPLAY = {
     'jakeh':   'Jakeh',
     'casey':   'Casey',
     'charlie': 'Charlie',
+    'cara':    'Cara',
 }
 
 def login_required(f):
