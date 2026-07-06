@@ -390,40 +390,50 @@ SUPPORT_TEMPLATE = '''
         }
         .original p { color: rgba(255,255,255,0.7); }
         .reply p { white-space: pre-line; line-height: 1.4; color: rgba(52,199,89,0.9); }
-        .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; }
         .btn {
-            padding: 8px 14px; border-radius: 8px; border: none;
-            font-weight: 600; color: white; cursor: pointer; font-size: 13px;
-            transition: all 0.2s ease; backdrop-filter: blur(10px);
+            padding: 8px 16px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-weight: 500; color: rgba(255,255,255,0.85); cursor: pointer; font-size: 13px;
+            font-family: 'Inter', -apple-system, sans-serif; letter-spacing: -0.1px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255,255,255,0.06); backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
         }
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
-        .btn-approve { background: rgba(52,199,89,0.8); }
-        .btn-approve:hover { background: rgba(52,199,89,1); }
-        .btn-edit { background: rgba(0,122,255,0.8); }
-        .btn-edit:hover { background: rgba(0,122,255,1); }
-        .btn-escalate { background: rgba(255,149,0,0.8); }
-        .btn-escalate:hover { background: rgba(255,149,0,1); }
-        .btn-reject { background: rgba(255,59,48,0.8); }
-        .btn-reject:hover { background: rgba(255,59,48,1); }
+        .btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); transform: translateY(-0.5px); }
+        .btn:active { transform: scale(0.97); }
+        .btn-approve { background: rgba(48,209,88,0.12); color: #34D058; border-color: rgba(48,209,88,0.2); }
+        .btn-approve:hover { background: rgba(48,209,88,0.2); border-color: rgba(48,209,88,0.35); }
+        .btn-edit { background: rgba(10,132,255,0.12); color: #5AC8FA; border-color: rgba(10,132,255,0.2); }
+        .btn-edit:hover { background: rgba(10,132,255,0.2); border-color: rgba(10,132,255,0.35); }
+        .btn-escalate { background: rgba(255,159,10,0.12); color: #FFD60A; border-color: rgba(255,159,10,0.2); }
+        .btn-escalate:hover { background: rgba(255,159,10,0.2); border-color: rgba(255,159,10,0.35); }
+        .btn-reject { background: rgba(255,69,58,0.1); color: #FF6961; border-color: rgba(255,69,58,0.15); }
+        .btn-reject:hover { background: rgba(255,69,58,0.18); border-color: rgba(255,69,58,0.3); }
         .inline-edit-form {
-            display: none; margin-top: 12px; padding: 12px; background: rgba(0,122,255,0.06);
-            border-radius: 8px; border: 1px solid rgba(0,122,255,0.3);
+            display: none; margin-top: 12px; padding: 14px;
+            background: rgba(10,132,255,0.04);
+            border-radius: 12px; border: 1px solid rgba(10,132,255,0.15);
         }
         .inline-edit-form.active { display: block; }
         .edit-textarea {
-            width: 100%; min-height: 120px; padding: 12px; border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 6px; font-family: inherit; font-size: 14px; line-height: 1.5;
-            resize: vertical; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.9);
+            width: 100%; min-height: 120px; padding: 12px; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; font-family: inherit; font-size: 14px; line-height: 1.5;
+            resize: vertical; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.9);
         }
-        .edit-textarea:focus { outline: none; border-color: rgba(0,122,255,0.5); }
-        .edit-actions { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+        .edit-textarea:focus { outline: none; border-color: rgba(10,132,255,0.4); box-shadow: 0 0 0 3px rgba(10,132,255,0.08); }
+        .edit-actions { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
         .btn-small {
-            padding: 6px 12px; border-radius: 6px; border: none;
-            font-weight: 500; color: white; cursor: pointer; font-size: 12px;
-            transition: all 0.2s ease;
+            padding: 7px 14px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-weight: 500; color: rgba(255,255,255,0.85); cursor: pointer; font-size: 12px;
+            font-family: 'Inter', -apple-system, sans-serif;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255,255,255,0.06);
         }
-        .btn-save { background: rgba(52,199,89,0.8); }
-        .btn-cancel { background: rgba(255,255,255,0.15); }
+        .btn-small:hover { background: rgba(255,255,255,0.1); }
+        .btn-save { background: rgba(48,209,88,0.12); color: #34D058; border-color: rgba(48,209,88,0.2); }
+        .btn-cancel { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
         .escalation-form {
             display: none; margin-top: 12px; padding: 12px; background: rgba(255,149,0,0.06);
             border-radius: 8px; border: 1px solid rgba(255,149,0,0.3);
@@ -534,7 +544,7 @@ SUPPORT_TEMPLATE = '''
                     </select>
                     <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Add context (optional)"></textarea>
                     <div class="edit-actions">
-                        <button class="btn-small" style="background: #FF9500;" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
+                        <button class="btn-small" style="background:rgba(255,159,10,0.12);color:#FFD60A;border-color:rgba(255,159,10,0.2);" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
                         <button class="btn-small btn-cancel" onclick="cancelEscalation('{{ draft.id }}')">Cancel</button>
                     </div>
                 </div>
@@ -896,21 +906,26 @@ def dashboard():
             text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;
         }
         .reply p { white-space: pre-line; line-height: 1.4; color: rgba(52,199,89,0.9); }
-        .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; }
         .btn {
-            padding: 8px 14px; border-radius: 8px; border: none;
-            font-weight: 600; color: white; cursor: pointer; font-size: 13px;
-            transition: all 0.2s ease; backdrop-filter: blur(10px);
+            padding: 8px 16px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-weight: 500; color: rgba(255,255,255,0.85); cursor: pointer; font-size: 13px;
+            font-family: 'Inter', -apple-system, sans-serif; letter-spacing: -0.1px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255,255,255,0.06); backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
         }
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
-        .btn-approve { background: rgba(52,199,89,0.8); }
-        .btn-approve:hover { background: rgba(52,199,89,1); }
-        .btn-edit { background: rgba(0,122,255,0.8); }
-        .btn-edit:hover { background: rgba(0,122,255,1); }
-        .btn-escalate { background: rgba(255,149,0,0.8); }
-        .btn-escalate:hover { background: rgba(255,149,0,1); }
-        .btn-reject { background: rgba(255,59,48,0.8); }
-        .btn-reject:hover { background: rgba(255,59,48,1); }
+        .btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); transform: translateY(-0.5px); }
+        .btn:active { transform: scale(0.97); }
+        .btn-approve { background: rgba(48,209,88,0.12); color: #34D058; border-color: rgba(48,209,88,0.2); }
+        .btn-approve:hover { background: rgba(48,209,88,0.2); border-color: rgba(48,209,88,0.35); }
+        .btn-edit { background: rgba(10,132,255,0.12); color: #5AC8FA; border-color: rgba(10,132,255,0.2); }
+        .btn-edit:hover { background: rgba(10,132,255,0.2); border-color: rgba(10,132,255,0.35); }
+        .btn-escalate { background: rgba(255,159,10,0.12); color: #FFD60A; border-color: rgba(255,159,10,0.2); }
+        .btn-escalate:hover { background: rgba(255,159,10,0.2); border-color: rgba(255,159,10,0.35); }
+        .btn-reject { background: rgba(255,69,58,0.1); color: #FF6961; border-color: rgba(255,69,58,0.15); }
+        .btn-reject:hover { background: rgba(255,69,58,0.18); border-color: rgba(255,69,58,0.3); }
         .user-link { color: inherit; text-decoration: none; cursor: pointer; transition: color 0.2s; }
         .user-link:hover { text-decoration: underline; color: #5AC8FA; }
         .modal-overlay {
@@ -970,10 +985,19 @@ def dashboard():
             font-weight: 500; color: white; cursor: pointer; font-size: 12px;
             transition: all 0.2s ease;
         }
-        .btn-save { background: rgba(52,199,89,0.8); }
-        .btn-save:hover { background: rgba(52,199,89,1); }
-        .btn-cancel { background: rgba(255,255,255,0.15); }
-        .btn-cancel:hover { background: rgba(255,255,255,0.25); }
+        .btn-small {
+            padding: 7px 14px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-weight: 500; color: rgba(255,255,255,0.85); cursor: pointer; font-size: 12px;
+            font-family: 'Inter', -apple-system, sans-serif;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255,255,255,0.06);
+        }
+        .btn-small:hover { background: rgba(255,255,255,0.1); }
+        .btn-save { background: rgba(48,209,88,0.12); color: #34D058; border-color: rgba(48,209,88,0.2); }
+        .btn-save:hover { background: rgba(48,209,88,0.2); }
+        .btn-cancel { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+        .btn-cancel:hover { background: rgba(255,255,255,0.1); }
         .escalation-form {
             display: none; margin-top: 12px; padding: 12px; background: rgba(255,149,0,0.06);
             border-radius: 8px; border: 1px solid rgba(255,149,0,0.3);
@@ -1111,7 +1135,7 @@ def dashboard():
                     </select>
                     <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Add context (optional)"></textarea>
                     <div class="edit-actions">
-                        <button class="btn-small" style="background:rgba(255,149,0,0.8);" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
+                        <button class="btn-small" style="background:rgba(255,159,10,0.12);color:#FFD60A;border-color:rgba(255,159,10,0.2);" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
                         <button class="btn-small btn-cancel" onclick="cancelEscalation('{{ draft.id }}')">Cancel</button>
                     </div>
                 </div>
@@ -1157,13 +1181,13 @@ def dashboard():
                 <div class="actions">
                     <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
                     <button class="btn btn-edit" onclick="showEditForm('{{ draft.id }}')">Edit</button>
-                    <button class="btn" style="background:rgba(139,92,246,0.8);" onclick="regenerateDraft('{{ draft.id }}')">🔄 Regenerate</button>
+                    <button class="btn" style="background:rgba(139,92,246,0.12);color:#BF5AF2;border-color:rgba(139,92,246,0.2);" onclick="regenerateDraft('{{ draft.id }}')">🔄 Regenerate</button>
                     <button class="btn btn-escalate" onclick="showEscalationForm('{{ draft.id }}')">Escalate</button>
                     <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
                     {% if not draft.claimed_by %}
-                    <button class="btn" style="background:rgba(0,122,255,0.8);" onclick="claimDraft('{{ draft.id }}')">🔒 Claim</button>
+                    <button class="btn" style="background:rgba(10,132,255,0.12);color:#5AC8FA;border-color:rgba(10,132,255,0.2);" onclick="claimDraft('{{ draft.id }}')">🔒 Claim</button>
                     {% else %}
-                    <button class="btn" style="background:rgba(255,255,255,0.15);" onclick="unclaimDraft('{{ draft.id }}')">Unclaim</button>
+                    <button class="btn" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);" onclick="unclaimDraft('{{ draft.id }}')">Unclaim</button>
                     {% endif %}
                 </div>
                 {% endif %}
