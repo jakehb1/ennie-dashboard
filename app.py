@@ -1633,8 +1633,22 @@ def rate_draft(draft_id):
         return jsonify({'error': str(e)}), 500
 
 # Local regen server running on Mac Studio, exposed via Cloudflare tunnel
-REGEN_SERVER_URL = os.environ.get('REGEN_SERVER_URL', 'https://restaurant-hired-euros-wave.trycloudflare.com')
+# URL is registered dynamically by the tunnel startup script
+_regen_server_url = os.environ.get('REGEN_SERVER_URL', 'https://restaurant-hired-euros-wave.trycloudflare.com')
 REGEN_SECRET = os.environ.get('REGEN_SECRET', 'ennie-regen-2026')
+
+@app.route('/api/regen-url', methods=['POST'])
+def register_regen_url():
+    """Called by the local tunnel script to register its current URL."""
+    global _regen_server_url
+    data = request.get_json() or {}
+    if data.get('secret') != REGEN_SECRET:
+        return jsonify({'error': 'Invalid secret'}), 403
+    url = data.get('url', '').strip()
+    if not url:
+        return jsonify({'error': 'URL required'}), 400
+    _regen_server_url = url
+    return jsonify({'ok': True, 'url': url})
 
 @app.route('/api/drafts/<draft_id>/regenerate', methods=['POST'])
 @login_required
@@ -1651,7 +1665,7 @@ def regenerate_draft(draft_id):
         
         # Call local regen server
         r = req.post(
-            f'{REGEN_SERVER_URL}/regenerate',
+            f'{_regen_server_url}/regenerate',
             json={
                 'body_original': draft.get('body_original', ''),
                 'subject': draft.get('subject', ''),
