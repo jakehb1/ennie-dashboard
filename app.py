@@ -1632,84 +1632,41 @@ def rate_draft(draft_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
-REGEN_MODEL = 'claude-sonnet-4-5'
-
-def call_anthropic(prompt, model=None, max_tokens=1200):
-    """Call Anthropic API directly to generate a response."""
-    import requests as req
-    model = model or REGEN_MODEL
-    r = req.post('https://api.anthropic.com/v1/messages',
-        headers={
-            'x-api-key': ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-        },
-        json={'model': model, 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': max_tokens},
-        timeout=60
-    )
-    r.raise_for_status()
-    return r.json()['content'][0]['text'].strip()
-
-def build_regen_prompt(draft):
-    """Build regeneration prompt from draft data."""
-    return f"""you are casey or eli from charlie goldsmith's support team responding to a customer email.
-
-IMPORTANT LINKS:
-- Generic Kajabi login: teaching.charliegoldsmith.com/login
-- Energy Teaching 2026 signup: https://teaching.charliegoldsmith.com/offers/sakpMuQo/checkout
-- Main website: www.charliegoldsmith.com
-- NEVER use "charliegoldsmith.mykajabi.com"
-
-voice and style:
-- warm, professional tone. friendly but polished — not overly casual, not overly friendly.
-- NEVER use slang greetings like "G'day", "Hey there!", "Howdy", "mate", "folks". just use "Hi [name]," or "Hello [name],".
-- short sentences. get to the point. no filler, no fluff.
-- avoid casual/slang words like "grab", "check out", "awesome", "cool". use proper alternatives like "purchase", "view", "wonderful".
-- ABSOLUTELY NO EMOJIS. no hearts, no stars, no smiley faces, nothing. plain text only.
-- no dashes ever. use :) sparingly.
-- always sign off with:
-
-With love,
-
-*The Charlie Goldsmith Support Team*
-www.charliegoldsmith.com
-
-- start with "hi [name]," when you know their name
-- say "thanks for reaching out" not "thank you for contacting us"
-- never say "i'd be happy to help" or "we appreciate your patience" or "don't hesitate to reach out"
-- keep it human. if you'd cringe reading it out loud, rewrite it.
-- NEVER PUNT: do not say "we've passed this along" or "someone will get back to you". answer directly.
-- NEVER PROMISE TO PASS ANYTHING TO CHARLIE.
-- FRAMING: never say what Charlie doesn't do. guide toward what IS available.
-- THE ENNIE APP: NEVER say the app is "closed" or "shut down". the app is currently waitlisted while being redeveloped for its launch in the coming months.
-
-customer email:
-{draft.get('body_original', '')}
-
-subject: {draft.get('subject', '')}
-from: {draft.get('from_name', '')} ({draft.get('from_email', '')})
-
-write a support response:"""
+# Local regen server running on Mac Studio, exposed via Cloudflare tunnel
+REGEN_SERVER_URL = os.environ.get('REGEN_SERVER_URL', 'https://restaurant-hired-euros-wave.trycloudflare.com')
+REGEN_SECRET = os.environ.get('REGEN_SECRET', 'ennie-regen-2026')
 
 @app.route('/api/drafts/<draft_id>/regenerate', methods=['POST'])
 @login_required
 def regenerate_draft(draft_id):
-    """Regenerate AI draft response using OpenRouter."""
+    """Regenerate AI draft by calling back to local regen server."""
     try:
+        import requests as req
         draft = get_draft(draft_id)
         if not draft:
             return jsonify({'error': 'Draft not found'}), 404
         
-        if not ANTHROPIC_API_KEY:
-            return jsonify({'error': 'Anthropic API key not configured'}), 500
-        
         # Mark as regenerating
         update_draft(draft_id, {'status': 'regenerating'})
         
-        # Generate new response
-        prompt = build_regen_prompt(draft)
-        new_draft_body = call_anthropic(prompt)
+        # Call local regen server
+        r = req.post(
+            f'{REGEN_SERVER_URL}/regenerate',
+            json={
+                'body_original': draft.get('body_original', ''),
+                'subject': draft.get('subject', ''),
+                'from_name': draft.get('from_name', ''),
+                'from_email': draft.get('from_email', ''),
+            },
+            headers={'X-Regen-Secret': REGEN_SECRET},
+            timeout=90,
+        )
+        r.raise_for_status()
+        result = r.json()
+        
+        new_draft_body = result.get('draft_body', '')
+        if not new_draft_body:
+            raise ValueError('Empty response from regen server')
         
         # Save the original if not already saved, then update with new draft
         updates = {
@@ -1726,6 +1683,7 @@ def regenerate_draft(draft_id):
         # Revert status on failure
         update_draft(draft_id, {'status': 'pending'})
         return jsonify({'error': f'Regeneration failed: {str(e)}'}), 500
+
 
 @app.route('/api/escalations/stale', methods=['GET'])
 @login_required
