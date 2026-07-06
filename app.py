@@ -1632,20 +1632,24 @@ def rate_draft(draft_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
-REGEN_MODEL = 'anthropic/claude-sonnet-4-20250514'
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+REGEN_MODEL = 'claude-sonnet-4-5'
 
-def call_openrouter(prompt, model=None, max_tokens=1200):
-    """Call OpenRouter API to generate a response."""
+def call_anthropic(prompt, model=None, max_tokens=1200):
+    """Call Anthropic API directly to generate a response."""
     import requests as req
     model = model or REGEN_MODEL
-    r = req.post('https://openrouter.ai/api/v1/chat/completions',
-        headers={'Authorization': f'Bearer {OPENROUTER_API_KEY}', 'Content-Type': 'application/json'},
+    r = req.post('https://api.anthropic.com/v1/messages',
+        headers={
+            'x-api-key': ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+        },
         json={'model': model, 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': max_tokens},
         timeout=60
     )
     r.raise_for_status()
-    return r.json()['choices'][0]['message']['content'].strip()
+    return r.json()['content'][0]['text'].strip()
 
 def build_regen_prompt(draft):
     """Build regeneration prompt from draft data."""
@@ -1696,15 +1700,15 @@ def regenerate_draft(draft_id):
         if not draft:
             return jsonify({'error': 'Draft not found'}), 404
         
-        if not OPENROUTER_API_KEY:
-            return jsonify({'error': 'OpenRouter API key not configured'}), 500
+        if not ANTHROPIC_API_KEY:
+            return jsonify({'error': 'Anthropic API key not configured'}), 500
         
         # Mark as regenerating
         update_draft(draft_id, {'status': 'regenerating'})
         
         # Generate new response
         prompt = build_regen_prompt(draft)
-        new_draft_body = call_openrouter(prompt)
+        new_draft_body = call_anthropic(prompt)
         
         # Save the original if not already saved, then update with new draft
         updates = {
