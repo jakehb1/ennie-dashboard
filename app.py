@@ -1682,6 +1682,7 @@ www.charliegoldsmith.com
 - NEVER PUNT: do not say "we've passed this along" or "someone will get back to you". answer directly.
 - NEVER PROMISE TO PASS ANYTHING TO CHARLIE.
 - FRAMING: never say what Charlie doesn't do. guide toward what IS available.
+- THE ENNIE APP: NEVER say the app is "closed" or "shut down". the app is currently waitlisted while being redeveloped for its launch in the coming months.
 
 customer email:
 {draft.get('body_original', '')}
