@@ -402,14 +402,14 @@ SUPPORT_TEMPLATE = '''
         }
         .btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); transform: translateY(-0.5px); }
         .btn:active { transform: scale(0.97); }
-        .btn-approve { background: rgba(48,209,88,0.12); color: #34D058; border-color: rgba(48,209,88,0.2); }
-        .btn-approve:hover { background: rgba(48,209,88,0.2); border-color: rgba(48,209,88,0.35); }
-        .btn-edit { background: rgba(10,132,255,0.12); color: #5AC8FA; border-color: rgba(10,132,255,0.2); }
-        .btn-edit:hover { background: rgba(10,132,255,0.2); border-color: rgba(10,132,255,0.35); }
-        .btn-escalate { background: rgba(255,159,10,0.12); color: #FFD60A; border-color: rgba(255,159,10,0.2); }
-        .btn-escalate:hover { background: rgba(255,159,10,0.2); border-color: rgba(255,159,10,0.35); }
-        .btn-reject { background: rgba(255,69,58,0.1); color: #FF6961; border-color: rgba(255,69,58,0.15); }
-        .btn-reject:hover { background: rgba(255,69,58,0.18); border-color: rgba(255,69,58,0.3); }
+        .btn-approve { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.15); }
+        .btn-approve:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.25); }
+        .btn-edit { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.1); }
+        .btn-edit:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); }
+        .btn-escalate { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.1); }
+        .btn-escalate:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); }
+        .btn-reject { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.08); }
+        .btn-reject:hover { background: rgba(255,69,58,0.08); color: rgba(255,100,100,0.8); border-color: rgba(255,69,58,0.15); }
         .inline-edit-form {
             display: none; margin-top: 12px; padding: 14px;
             background: rgba(10,132,255,0.04);
@@ -432,11 +432,11 @@ SUPPORT_TEMPLATE = '''
             background: rgba(255,255,255,0.06);
         }
         .btn-small:hover { background: rgba(255,255,255,0.1); }
-        .btn-save { background: rgba(48,209,88,0.12); color: #34D058; border-color: rgba(48,209,88,0.2); }
-        .btn-cancel { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+        .btn-save { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.15); }
+        .btn-cancel { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); }
         .escalation-form {
-            display: none; margin-top: 12px; padding: 12px; background: rgba(255,149,0,0.06);
-            border-radius: 8px; border: 1px solid rgba(255,149,0,0.3);
+            display: none; margin-top: 12px; padding: 14px; background: rgba(255,255,255,0.03);
+            border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);
         }
         .escalation-form.active { display: block; }
         .escalation-textarea {
@@ -504,9 +504,9 @@ SUPPORT_TEMPLATE = '''
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                     {% set st = draft.status or 'pending' %}
                     <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;
-                        {% if st == 'pending' %}background:rgba(255,149,0,0.15);color:#FF9500;
-                        {% elif st == 'escalated' %}background:rgba(255,59,48,0.15);color:#FF3B30;
-                        {% elif st == 'approved' or st == 'sent' %}background:rgba(52,199,89,0.15);color:#34C759;
+                        {% if st == 'pending' %}background:rgba(255,255,255,0.06);color:rgba(255,200,100,0.7);border:1px solid rgba(255,200,100,0.1);
+                        {% elif st == 'escalated' %}background:rgba(255,255,255,0.06);color:rgba(255,100,100,0.8);border:1px solid rgba(255,100,100,0.12);
+                        {% elif st == 'approved' or st == 'sent' %}background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);
                         {% elif st == 'rejected' %}background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);
                         {% elif st == 'resolved' %}background:rgba(0,122,255,0.15);color:#5AC8FA;
                         {% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);
@@ -535,7 +535,7 @@ SUPPORT_TEMPLATE = '''
                 </div>
 
                 <div class="escalation-form" id="escalation-form-{{ draft.id }}">
-                    <div class="escalation-note">⚠️ Escalating — select who to send to:</div>
+                    <div class="escalation-note">Escalating — select who to send to:</div>
                     <select id="escalation-to-{{ draft.id }}" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:13px;margin-bottom:8px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.9);">
                         <option value="casey" selected>Casey</option>
                         <option value="jakeh">Jakeh</option>
@@ -544,14 +544,14 @@ SUPPORT_TEMPLATE = '''
                     </select>
                     <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Add context (optional)"></textarea>
                     <div class="edit-actions">
-                        <button class="btn-small" style="background:rgba(255,159,10,0.12);color:#FFD60A;border-color:rgba(255,159,10,0.2);" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
+                        <button class="btn-small" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.9);border-color:rgba(255,255,255,0.15);" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
                         <button class="btn-small btn-cancel" onclick="cancelEscalation('{{ draft.id }}')">Cancel</button>
                     </div>
                 </div>
             </div>
 
             {% if draft.approved_by and draft.status in ('approved', 'sent') %}
-            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px;">✅ Approved by <strong style="color:rgba(255,255,255,0.7);">{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px;">Approved by <strong style="color:rgba(255,255,255,0.7);">{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
             {% endif %}
 
             {% if (draft.status or 'pending') == 'pending' %}
@@ -918,16 +918,16 @@ def dashboard():
         }
         .btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); transform: translateY(-0.5px); }
         .btn:active { transform: scale(0.97); }
-        .btn-approve { background: rgba(48,209,88,0.12); color: #34D058; border-color: rgba(48,209,88,0.2); }
-        .btn-approve:hover { background: rgba(48,209,88,0.2); border-color: rgba(48,209,88,0.35); }
-        .btn-edit { background: rgba(10,132,255,0.12); color: #5AC8FA; border-color: rgba(10,132,255,0.2); }
-        .btn-edit:hover { background: rgba(10,132,255,0.2); border-color: rgba(10,132,255,0.35); }
-        .btn-escalate { background: rgba(255,159,10,0.12); color: #FFD60A; border-color: rgba(255,159,10,0.2); }
-        .btn-escalate:hover { background: rgba(255,159,10,0.2); border-color: rgba(255,159,10,0.35); }
-        .btn-reject { background: rgba(255,69,58,0.1); color: #FF6961; border-color: rgba(255,69,58,0.15); }
-        .btn-reject:hover { background: rgba(255,69,58,0.18); border-color: rgba(255,69,58,0.3); }
+        .btn-approve { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.15); }
+        .btn-approve:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.25); }
+        .btn-edit { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.1); }
+        .btn-edit:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); }
+        .btn-escalate { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.1); }
+        .btn-escalate:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); }
+        .btn-reject { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.08); }
+        .btn-reject:hover { background: rgba(255,69,58,0.08); color: rgba(255,100,100,0.8); border-color: rgba(255,69,58,0.15); }
         .user-link { color: inherit; text-decoration: none; cursor: pointer; transition: color 0.2s; }
-        .user-link:hover { text-decoration: underline; color: #5AC8FA; }
+        .user-link:hover { text-decoration: underline; color: rgba(255,255,255,0.7); }
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
             background: rgba(0,0,0,0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -994,10 +994,10 @@ def dashboard():
             background: rgba(255,255,255,0.06);
         }
         .btn-small:hover { background: rgba(255,255,255,0.1); }
-        .btn-save { background: rgba(48,209,88,0.12); color: #34D058; border-color: rgba(48,209,88,0.2); }
-        .btn-save:hover { background: rgba(48,209,88,0.2); }
-        .btn-cancel { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
-        .btn-cancel:hover { background: rgba(255,255,255,0.1); }
+        .btn-save { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.15); }
+        .btn-save:hover { background: rgba(255,255,255,0.14); }
+        .btn-cancel { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); }
+        .btn-cancel:hover { background: rgba(255,255,255,0.08); }
         .escalation-form {
             display: none; margin-top: 12px; padding: 12px; background: rgba(255,149,0,0.06);
             border-radius: 8px; border: 1px solid rgba(255,149,0,0.3);
@@ -1090,16 +1090,16 @@ def dashboard():
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                     {% set st = draft.status or 'pending' %}
                     <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;
-                        {% if st == 'pending' %}background:rgba(255,149,0,0.15);color:#FF9500;
-                        {% elif st == 'escalated' %}background:rgba(255,59,48,0.15);color:#FF3B30;
-                        {% elif st == 'approved' or st == 'sent' %}background:rgba(52,199,89,0.15);color:#34C759;
+                        {% if st == 'pending' %}background:rgba(255,255,255,0.06);color:rgba(255,200,100,0.7);border:1px solid rgba(255,200,100,0.1);
+                        {% elif st == 'escalated' %}background:rgba(255,255,255,0.06);color:rgba(255,100,100,0.8);border:1px solid rgba(255,100,100,0.12);
+                        {% elif st == 'approved' or st == 'sent' %}background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);
                         {% elif st == 'rejected' %}background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);
                         {% elif st == 'resolved' %}background:rgba(0,122,255,0.15);color:#5AC8FA;
                         {% elif st == 'regenerating' %}background:rgba(139,92,246,0.15);color:#8B5CF6;
                         {% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);
                         {% endif %}">{{ st }}</span>
-                    {% if draft.urgency == 'urgent' %}<span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:rgba(255,59,48,0.15);color:#FF3B30;">🔴 Urgent</span>{% endif %}
-                    {% if draft.urgency == 'moderate' %}<span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:rgba(255,149,0,0.15);color:#FF9500;">🟡 Moderate</span>{% endif %}
+                    {% if draft.urgency == 'urgent' %}<span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.06);color:rgba(255,100,100,0.8);border:1px solid rgba(255,100,100,0.12);">Urgent</span>{% endif %}
+                    {% if draft.urgency == 'moderate' %}<span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.06);color:rgba(255,200,100,0.7);border:1px solid rgba(255,200,100,0.1);">Moderate</span>{% endif %}
                     <div class="tag {{ draft.classification }}">{{ draft.classification.replace('_', ' ') }}</div>
                 </div>
             </div>
@@ -1126,7 +1126,7 @@ def dashboard():
                 
                 <!-- Inline Escalation Form -->
                 <div class="escalation-form" id="escalation-form-{{ draft.id }}">
-                    <div class="escalation-note">⚠️ Escalating — select who to send to:</div>
+                    <div class="escalation-note">Escalating — select who to send to:</div>
                     <select id="escalation-to-{{ draft.id }}" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:13px;margin-bottom:8px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.9);">
                         <option value="casey" selected>Casey</option>
                         <option value="jakeh">Jakeh</option>
@@ -1135,7 +1135,7 @@ def dashboard():
                     </select>
                     <textarea class="escalation-textarea" id="escalation-text-{{ draft.id }}" placeholder="Add context (optional)"></textarea>
                     <div class="edit-actions">
-                        <button class="btn-small" style="background:rgba(255,159,10,0.12);color:#FFD60A;border-color:rgba(255,159,10,0.2);" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
+                        <button class="btn-small" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.9);border-color:rgba(255,255,255,0.15);" onclick="saveEscalation('{{ draft.id }}')">Escalate</button>
                         <button class="btn-small btn-cancel" onclick="cancelEscalation('{{ draft.id }}')">Cancel</button>
                     </div>
                 </div>
@@ -1145,15 +1145,15 @@ def dashboard():
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                 <span style="font-size:12px;color:rgba(255,255,255,0.45);font-weight:600;">URGENCY:</span>
                 <select onchange="setUrgency('{{ draft.id }}', this.value)" style="padding:4px 8px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;font-weight:600;
-                    {% if draft.urgency == 'urgent' %}background:rgba(255,59,48,0.15);color:#FF3B30;
-                    {% elif draft.urgency == 'moderate' %}background:rgba(255,149,0,0.15);color:#FF9500;
-                    {% else %}background:rgba(52,199,89,0.15);color:#34C759;{% endif %}">
+                    {% if draft.urgency == 'urgent' %}background:rgba(255,255,255,0.06);color:rgba(255,100,100,0.8);border:1px solid rgba(255,100,100,0.12);
+                    {% elif draft.urgency == 'moderate' %}background:rgba(255,255,255,0.06);color:rgba(255,200,100,0.7);border:1px solid rgba(255,200,100,0.1);
+                    {% else %}background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);{% endif %}">
                     <option value="not_urgent" {% if draft.urgency != 'moderate' and draft.urgency != 'urgent' %}selected{% endif %}>Not Urgent</option>
                     <option value="moderate" {% if draft.urgency == 'moderate' %}selected{% endif %}>Moderate</option>
                     <option value="urgent" {% if draft.urgency == 'urgent' %}selected{% endif %}>Urgent</option>
                 </select>
-                {% if draft.urgency == 'urgent' %}<span style="font-size:11px;">🔴</span>{% endif %}
-                {% if draft.urgency == 'moderate' %}<span style="font-size:11px;">🟡</span>{% endif %}
+                
+                
             </div>
 
             {# ── Star Rating ── #}
@@ -1167,7 +1167,7 @@ def dashboard():
 
             {# ── Approved by info ── #}
             {% if draft.approved_by and draft.status in ('approved', 'sent') %}
-            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px;">✅ Approved by <strong style="color:rgba(255,255,255,0.7);">{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px;">Approved by <strong style="color:rgba(255,255,255,0.7);">{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
             {% endif %}
 
             {# ── Claim/Action buttons ── #}
@@ -1175,17 +1175,17 @@ def dashboard():
             {% if st in ('pending', 'regenerating') %}
                 {% if draft.claimed_by and draft.claimed_by != current_user %}
                 <div style="padding:10px;background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.2);border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:#FF9500;">
-                    🔒 Claimed by {{ draft.claimed_by }}
+                    Claimed by {{ draft.claimed_by }}
                 </div>
                 {% else %}
                 <div class="actions">
                     <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
                     <button class="btn btn-edit" onclick="showEditForm('{{ draft.id }}')">Edit</button>
-                    <button class="btn" style="background:rgba(139,92,246,0.12);color:#BF5AF2;border-color:rgba(139,92,246,0.2);" onclick="regenerateDraft('{{ draft.id }}')">🔄 Regenerate</button>
+                    <button class="btn" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.1);" onclick="regenerateDraft('{{ draft.id }}')">Regenerate</button>
                     <button class="btn btn-escalate" onclick="showEscalationForm('{{ draft.id }}')">Escalate</button>
                     <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
                     {% if not draft.claimed_by %}
-                    <button class="btn" style="background:rgba(10,132,255,0.12);color:#5AC8FA;border-color:rgba(10,132,255,0.2);" onclick="claimDraft('{{ draft.id }}')">🔒 Claim</button>
+                    <button class="btn" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.1);" onclick="claimDraft('{{ draft.id }}')">Claim</button>
                     {% else %}
                     <button class="btn" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);" onclick="unclaimDraft('{{ draft.id }}')">Unclaim</button>
                     {% endif %}
@@ -1380,7 +1380,7 @@ function regenerateDraft(id) {
   const card = document.querySelector('[data-draft-id="' + id + '"]');
   if (card) {
     const actions = card.querySelector('.actions');
-    if (actions) actions.innerHTML = '<span style="color:#8B5CF6;font-weight:600;font-size:13px;opacity:0.9;">🔄 Regenerating... please wait</span>';
+    if (actions) actions.innerHTML = '<span style="color:#8B5CF6;font-weight:600;font-size:13px;opacity:0.9;">Regenerating…</span>';
   }
   apiPost('/api/drafts/' + id + '/regenerate').then(res => {
     if (res.ok) { toast('Draft regenerated!', 'success'); location.reload(); }
