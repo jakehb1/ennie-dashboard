@@ -390,3 +390,71 @@ async function deleteKBEntry(id) {
     toast('Something went wrong', 'error');
   }
 }
+
+// ── Global Search ─────────────────────────────────────────────────────────────────
+(function() {
+  const input = document.getElementById('global-search');
+  const dropdown = document.getElementById('search-results');
+  if (!input || !dropdown) return;
+
+  let debounce = null;
+
+  input.addEventListener('input', function() {
+    clearTimeout(debounce);
+    const q = this.value.trim();
+    if (q.length < 2) { dropdown.classList.remove('active'); return; }
+    debounce = setTimeout(() => doSearch(q), 250);
+  });
+
+  input.addEventListener('focus', function() {
+    if (this.value.trim().length >= 2 && dropdown.innerHTML) dropdown.classList.add('active');
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.classList.remove('active');
+    }
+  });
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { dropdown.classList.remove('active'); this.blur(); }
+  });
+
+  async function doSearch(q) {
+    try {
+      const res = await apiGet('/api/search?q=' + encodeURIComponent(q));
+      if (!res.results) { dropdown.classList.remove('active'); return; }
+
+      let html = '';
+      if (res.count > 0) {
+        html += '<div class="search-count">' + res.count + ' result' + (res.count !== 1 ? 's' : '') + '</div>';
+        res.results.forEach(function(r) {
+          const date = (r.created_at || '').substring(0, 10);
+          html += '<div class="search-result" onclick="window.location=\'/?\'">';
+          html += '<div class="search-result-sender">' + esc(r.from_name || r.from_email || 'Unknown') + '</div>';
+          html += '<div class="search-result-subject">' + esc(r.subject || 'No subject') + '</div>';
+          html += '<div class="search-result-meta">';
+          html += '<span>' + esc(r.from_email || '') + '</span>';
+          html += '<span>·</span>';
+          html += '<span>' + date + '</span>';
+          if (r.status) html += '<span class="search-result-status">' + esc(r.status) + '</span>';
+          html += '</div></div>';
+        });
+      } else {
+        html = '<div class="search-empty">No results for \u201c' + esc(q) + '\u201d</div>';
+      }
+
+      dropdown.innerHTML = html;
+      dropdown.classList.add('active');
+    } catch (e) {
+      dropdown.innerHTML = '<div class="search-empty">Search error</div>';
+      dropdown.classList.add('active');
+    }
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+})();

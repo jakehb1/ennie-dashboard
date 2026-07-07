@@ -127,12 +127,106 @@ body::after {
 .nav-link.logout       { color: var(--red); }
 .nav-link.logout:hover { background: rgba(255, 69, 58, 0.1); color: var(--red); }
 
+/* ── Nav search ───────────────────────────────────────────────────────────────── */
+.nav-search {
+  position: relative;
+  margin-left: auto;
+  margin-right: 8px;
+}
+.nav-search input {
+  width: 200px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font);
+  outline: none;
+  transition: all var(--transition);
+}
+.nav-search input:focus {
+  width: 280px;
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+}
+.nav-search input::placeholder { color: var(--text-tertiary); }
+
+.search-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 420px;
+  max-height: 480px;
+  overflow-y: auto;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(40px) saturate(150%);
+  -webkit-backdrop-filter: blur(40px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  z-index: 200;
+  padding: 6px;
+}
+.search-dropdown.active { display: block; }
+
+.search-result {
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.search-result:hover { background: rgba(255, 255, 255, 0.06); }
+.search-result-sender {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.search-result-subject {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-result-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.search-result-status {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-tertiary);
+}
+.search-empty {
+  padding: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.search-count {
+  padding: 8px 14px 4px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
 .nav-user {
   display:     flex;
   align-items: center;
   gap:         12px;
   flex-shrink: 0;
-  margin-left: auto;
 }
 .user-badge {
   font-size:       11px;

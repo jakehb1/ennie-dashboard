@@ -1795,6 +1795,43 @@ def stale_escalations():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/search', methods=['GET'])
+@login_required
+def search_emails():
+    """Search all emails by sender, subject, or body content."""
+    try:
+        q = request.args.get('q', '').strip().lower()
+        if not q or len(q) < 2:
+            return jsonify({'results': [], 'query': q, 'count': 0})
+        
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('''
+            SELECT * FROM drafts
+            WHERE LOWER(from_email) LIKE %(q)s
+               OR LOWER(from_name) LIKE %(q)s
+               OR LOWER(subject) LIKE %(q)s
+               OR LOWER(body_original) LIKE %(q)s
+               OR LOWER(draft_body) LIKE %(q)s
+            ORDER BY created_at DESC
+            LIMIT 50
+        ''', {'q': f'%{q}%'})
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+        
+        # Serialize
+        for r in rows:
+            for k, v in r.items():
+                if hasattr(v, 'isoformat'):
+                    r[k] = v.isoformat()
+                elif isinstance(v, bool):
+                    r[k] = v
+        
+        return jsonify({'results': rows, 'query': q, 'count': len(rows)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/approved-drafts', methods=['GET'])
 def get_approved_drafts():
     drafts = load_drafts()

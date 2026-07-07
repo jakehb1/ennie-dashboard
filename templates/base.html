@@ -37,6 +37,11 @@
     </a>
   </div>
 
+  <div class="nav-search">
+    <input type="text" id="global-search" placeholder="Search emails…" autocomplete="off" spellcheck="false">
+    <div id="search-results" class="search-dropdown"></div>
+  </div>
+
   <div class="nav-user">
     <span class="user-name">{{ session.display_name }}</span>
     <a href="{{ url_for('logout') }}" class="nav-link logout">Sign out</a>
