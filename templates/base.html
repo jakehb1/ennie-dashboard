@@ -59,8 +59,7 @@
 {% if session.user %}
 <nav class="glass-nav">
   <div class="nav-brand">
-    <span class="nav-logo">✦</span>
-    <span class="nav-title">Ennie Support</span>
+    <img src="{{ url_for('static', filename='ennie-logo.jpg') }}" alt="Ennie" class="nav-logo-img">
   </div>
 
   <div class="nav-links">

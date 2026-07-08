@@ -82,18 +82,12 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* Logo mark */
-    .logo-mark {
-      width: 56px;
-      height: 56px;
-      margin: 0 auto 20px;
-      background: linear-gradient(135deg, rgba(255, 149, 0, 0.2), rgba(255, 100, 0, 0.1));
-      border: 1px solid rgba(255, 149, 0, 0.15);
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
+    /* Logo */
+    .logo-img {
+      width: 160px;
+      height: auto;
+      margin: 0 auto 24px;
+      display: block;
     }
 
     .login-card h1 {
@@ -279,9 +273,8 @@
 <div class="bg-gradient"></div>
 
 <div class="login-card">
-  <div class="logo-mark">✦</div>
-  <h1>Ennie Support</h1>
-  <p class="subtitle">Team Dashboard</p>
+  <img src="/static/ennie-logo.jpg" alt="Ennie" class="logo-img">
+  <p class="subtitle">Support Dashboard</p>
 
   {% if error %}
   <div class="error-msg">{{ error }}</div>
