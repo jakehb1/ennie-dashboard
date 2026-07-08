@@ -2,6 +2,26 @@
 {% block title %}Inbox{% endblock %}
 
 {% block content %}
+<!-- Stats row -->
+<div class="stats-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+  <div class="glass-card stat-card">
+    <div class="stat-number">{{ total_count }}</div>
+    <div class="stat-label">Total</div>
+  </div>
+  <div class="glass-card stat-card">
+    <div class="stat-number" style="color:var(--orange);">{{ pending_count }}</div>
+    <div class="stat-label">Pending</div>
+  </div>
+  <div class="glass-card stat-card">
+    <div class="stat-number" style="color:var(--red, #FF6B6B);">{{ escalated_count }}</div>
+    <div class="stat-label">Escalated</div>
+  </div>
+  <div class="glass-card stat-card">
+    <div class="stat-number" style="color:var(--green, #34C759);">{{ handled_count }}</div>
+    <div class="stat-label">Handled</div>
+  </div>
+</div>
+
 <div class="page-header flex-between">
   <div>
     <h1 class="page-title">Inbox</h1>
@@ -16,12 +36,16 @@
 
     <div class="draft-card-header">
       <div>
-        <div class="card-sender">{{ d.sender_name or d.sender_email }}</div>
+        <div class="card-sender">{{ d.from_name or d.sender_name or d.from_email or d.sender_email }}</div>
         <div class="card-subject">{{ d.subject }}</div>
         <div class="card-meta">
-          <span>{{ d.sender_email }}</span>
+          <span>{{ d.from_email or d.sender_email }}</span>
           <span>·</span>
-          <span>{{ d.created_at[:10] }}</span>
+          <span>{{ d.created_at[:10] if d.created_at else '' }}</span>
+          {% if d.urgency and d.urgency != 'not_urgent' %}
+          <span>·</span>
+          <span style="color:{% if d.urgency == 'urgent' %}var(--red, #FF6B6B){% else %}var(--orange){% endif %};font-weight:600;text-transform:uppercase;font-size:11px;">{{ d.urgency }}</span>
+          {% endif %}
         </div>
       </div>
       {% if d.classification %}
@@ -42,19 +66,19 @@
     {% endif %}
 
     <div class="draft-actions">
-      <button class="btn btn-success btn-sm" onclick="approveDraft({{ d.id }})">
+      <button class="btn btn-success btn-sm" onclick="approveDraft('{{ d.id }}')">
         ✓ Approve
       </button>
-      <button class="btn btn-primary btn-sm" onclick="editDraft({{ d.id }})">
+      <button class="btn btn-primary btn-sm" onclick="editDraft('{{ d.id }}')">
         ✎ Edit + Approve
       </button>
-      <button class="btn btn-warning btn-sm" onclick="escalateDraft({{ d.id }})">
+      <button class="btn btn-warning btn-sm" onclick="escalateDraft('{{ d.id }}')">
         ↑ Escalate
       </button>
-      <button class="btn btn-danger btn-sm" onclick="rejectDraft({{ d.id }})">
+      <button class="btn btn-danger btn-sm" onclick="rejectDraft('{{ d.id }}')">
         ✕ Reject
       </button>
-      <a href="{{ url_for('lookup_page') }}?email={{ d.sender_email }}"
+      <a href="{{ url_for('lookup_page') }}?email={{ d.from_email or d.sender_email }}"
          class="btn btn-secondary btn-sm">
         🔍 Lookup
       </a>

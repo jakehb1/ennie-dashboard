@@ -63,12 +63,8 @@
   </div>
 
   <div class="nav-links">
-    <a href="{{ url_for('dashboard') }}"
-       class="nav-link{% if request.endpoint == 'dashboard' %} active{% endif %}">
-      Dashboard
-    </a>
     <a href="{{ url_for('inbox_page') }}"
-       class="nav-link{% if request.endpoint == 'inbox_page' %} active{% endif %}">
+       class="nav-link{% if request.endpoint in ('inbox_page', 'dashboard') %} active{% endif %}">
       Inbox
     </a>
     <a href="{{ url_for('escalations_page') }}"
