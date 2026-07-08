@@ -1839,7 +1839,6 @@ def get_approved_drafts():
     return jsonify(approved)
 
 @app.route('/api/drafts/<draft_id>/mark-sent', methods=['POST'])
-@login_required
 def mark_draft_sent(draft_id):
     try:
         if not get_draft(draft_id):
