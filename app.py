@@ -334,7 +334,7 @@ SUPPORT_TEMPLATE = '''
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ennie Support — Emails</title>
+    <title>Ennie — Support Emails</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -456,8 +456,7 @@ SUPPORT_TEMPLATE = '''
     <div class="container">
         <nav style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:24px;">
             <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-size:20px;">✦</span>
-                <span style="font-size:17px;font-weight:700;color:#fff;">Ennie Support</span>
+                <img src="/static/ennie-logo.jpg" alt="Ennie" style="height:28px;width:auto;">
             </div>
             <a href="/login" style="font-size:13px;color:rgba(255,255,255,0.4);text-decoration:none;padding:6px 14px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;transition:all 0.2s;">Admin Login</a>
         </nav>
@@ -846,12 +845,16 @@ def dashboard():
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ennie Support Dashboard</title>
+    <title>Ennie — Support Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
     <style>
+        .ennie-loader-overlay { position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity 0.6s ease,visibility 0.6s ease; }
+        .ennie-loader-overlay.fade-out { opacity:0;visibility:hidden;pointer-events:none; }
+        .ennie-loader-anim { width:180px;height:158px; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -1028,13 +1031,20 @@ def dashboard():
     </style>
 </head>
 <body>
+    <!-- Ennie Lottie loader -->
+    <div class="ennie-loader-overlay" id="ennie-loader"><div class="ennie-loader-anim" id="ennie-lottie"></div></div>
+    <script>
+    (function(){
+      var anim=lottie.loadAnimation({container:document.getElementById('ennie-lottie'),renderer:'svg',loop:true,autoplay:true,path:'/static/ennie-loader.json'});
+      window.addEventListener('load',function(){setTimeout(function(){document.getElementById('ennie-loader').classList.add('fade-out');setTimeout(function(){anim.destroy();},700);},1800);});
+    })();
+    </script>
     <div class="live-indicator"><span class="live-dot"></span>LIVE</div>
     <div class="container">
         <!-- Nav bar -->
         <nav style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:24px;">
             <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-size:20px;">✦</span>
-                <span style="font-size:17px;font-weight:700;color:#fff;">Ennie Support</span>
+                <img src="/static/ennie-logo.jpg" alt="Ennie" style="height:28px;width:auto;">
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <a href="/" style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;background:rgba(0,122,255,0.8);color:#fff;">Dashboard</a>
@@ -1048,7 +1058,7 @@ def dashboard():
         </nav>
 
         <div class="header">
-            <h1>Ennie Support Dashboard</h1>
+            <img src="/static/ennie-logo.jpg" alt="Ennie" style="height:42px;width:auto;margin-bottom:12px;">
             <p>{{ total_count }} total emails</p>
         </div>
         
