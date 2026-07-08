@@ -8,8 +8,53 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+  <style>
+    .ennie-loader-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+    .ennie-loader-overlay.fade-out {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .ennie-loader-anim {
+      width: 180px;
+      height: 158px;
+    }
+  </style>
 </head>
 <body>
+
+<!-- Ennie Lottie loader -->
+<div class="ennie-loader-overlay" id="ennie-loader">
+  <div class="ennie-loader-anim" id="ennie-lottie"></div>
+</div>
+<script>
+  (function() {
+    var anim = lottie.loadAnimation({
+      container: document.getElementById('ennie-lottie'),
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+      path: '{{ url_for("static", filename="ennie-loader.json") }}'
+    });
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        document.getElementById('ennie-loader').classList.add('fade-out');
+        setTimeout(function() { anim.destroy(); }, 700);
+      }, 1800);
+    });
+  })();
+</script>
 
 {% if session.user %}
 <nav class="glass-nav">
