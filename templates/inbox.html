@@ -31,13 +31,13 @@
 
     <div style="margin-bottom:10px;">
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);margin-bottom:6px;">Original email</div>
-      <div class="esc-body" style="margin:0;font-size:13px;">{{ d.body }}</div>
+      <div class="esc-body" style="margin:0;font-size:13px;">{{ d.body_original or d.body or '' }}</div>
     </div>
 
-    {% if d.draft_text %}
+    {% if d.draft_body or d.draft_text %}
     <div style="margin-bottom:14px;">
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);margin-bottom:6px;">Draft reply</div>
-      <div class="draft-preview">{{ d.draft_text }}</div>
+      <div class="draft-preview">{{ d.draft_body or d.draft_text }}</div>
     </div>
     {% endif %}
 
