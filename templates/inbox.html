@@ -65,15 +65,13 @@
         {% if d.committee_confidence %}
         {% set conf_raw = d.committee_confidence|string|replace('%','')|float(0) %}
         {% if conf_raw <= 5 %}
-          {% set conf_val = (conf_raw / 5 * 100)|round|int %}
-          {% set conf_label = conf_raw|int ~ '/5' %}
+          {% set conf_pct = (conf_raw / 5 * 100)|round|int %}
         {% else %}
-          {% set conf_val = conf_raw|round|int %}
-          {% set conf_label = conf_val ~ '%' %}
+          {% set conf_pct = conf_raw|round|int %}
         {% endif %}
-        <div class="confidence-badge{% if conf_val >= 80 %} confidence-high{% elif conf_val >= 50 %} confidence-med{% else %} confidence-low{% endif %}">
-          <span class="confidence-icon">{% if conf_val >= 80 %}✦{% elif conf_val >= 50 %}◉{% else %}⚠{% endif %}</span>
-          AI Confidence: {{ conf_label }}
+        <div class="confidence-badge{% if conf_pct >= 80 %} confidence-high{% elif conf_pct >= 50 %} confidence-med{% else %} confidence-low{% endif %}">
+          <span class="confidence-icon">{% if conf_pct >= 80 %}✦{% elif conf_pct >= 50 %}◉{% else %}⚠{% endif %}</span>
+          AI Confidence: {{ conf_pct }}%
         </div>
         {% endif %}
       </div>
