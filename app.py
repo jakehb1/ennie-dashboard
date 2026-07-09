@@ -682,12 +682,44 @@ def login():
             session['user'] = username
             session['display_name'] = ADMIN_DISPLAY.get(username, username)
             session['trace_id'] = uuid.uuid4().hex[:12]  # Hidden watermark per session
+            # Auto clock-in on login
+            try:
+                conn = get_db()
+                cur = conn.cursor(cursor_factory=RealDictCursor)
+                cur.execute("SELECT id FROM time_entries WHERE username = %s AND clock_out = '' LIMIT 1", (username,))
+                if not cur.fetchone():
+                    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    cur.execute("INSERT INTO time_entries (username, clock_in, created_at) VALUES (%s, %s, %s)", (username, now, now))
+                cur.close()
+                conn.close()
+            except Exception as e:
+                print(f'Auto clock-in error: {e}')
             return redirect(url_for('dashboard'))
         return render_template('login.html', error='Wrong PIN. Try again.')
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
+    # Auto clock-out on logout
+    user = session.get('user', '')
+    if user:
+        try:
+            conn = get_db()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT * FROM time_entries WHERE username = %s AND clock_out = '' ORDER BY clock_in DESC LIMIT 1", (user,))
+            row = cur.fetchone()
+            if row:
+                now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                try:
+                    clock_in_dt = datetime.strptime(row['clock_in'], '%Y-%m-%d %H:%M:%S')
+                    duration = (datetime.now() - clock_in_dt).total_seconds() / 60.0
+                except Exception:
+                    duration = 0
+                cur.execute("UPDATE time_entries SET clock_out = %s, duration_minutes = %s WHERE id = %s", (now, round(duration, 1), row['id']))
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f'Auto clock-out error: {e}')
     session.clear()
     return redirect(url_for('login'))
 
