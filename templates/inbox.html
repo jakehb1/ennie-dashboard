@@ -63,10 +63,17 @@
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);">Draft reply</div>
         {% if d.committee_confidence %}
-        {% set conf_val = d.committee_confidence|replace('%','')|float(0) %}
-        <div class="confidence-badge{% if conf_val >= 85 %} confidence-high{% elif conf_val >= 60 %} confidence-med{% else %} confidence-low{% endif %}">
-          <span class="confidence-icon">{% if conf_val >= 85 %}✦{% elif conf_val >= 60 %}◉{% else %}⚠{% endif %}</span>
-          AI Confidence: {{ d.committee_confidence }}{% if '%' not in (d.committee_confidence|string) %}%{% endif %}
+        {% set conf_raw = d.committee_confidence|string|replace('%','')|float(0) %}
+        {% if conf_raw <= 5 %}
+          {% set conf_val = (conf_raw / 5 * 100)|round|int %}
+          {% set conf_label = conf_raw|int ~ '/5' %}
+        {% else %}
+          {% set conf_val = conf_raw|round|int %}
+          {% set conf_label = conf_val ~ '%' %}
+        {% endif %}
+        <div class="confidence-badge{% if conf_val >= 80 %} confidence-high{% elif conf_val >= 50 %} confidence-med{% else %} confidence-low{% endif %}">
+          <span class="confidence-icon">{% if conf_val >= 80 %}✦{% elif conf_val >= 50 %}◉{% else %}⚠{% endif %}</span>
+          AI Confidence: {{ conf_label }}
         </div>
         {% endif %}
       </div>
