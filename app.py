@@ -762,6 +762,8 @@ def webhook():
             'classification': data.get('classification', ''),
             'escalate': bool(data.get('escalate', False)),
             'escalation_reason': data.get('escalation_reason', ''),
+            'committee_model': data.get('committee_model', ''),
+            'committee_confidence': str(data.get('committee_confidence', '')),
             'status': 'pending',
             'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'hidden_trace_id': uuid.uuid4().hex[:12],
