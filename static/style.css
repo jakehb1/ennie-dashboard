@@ -487,11 +487,16 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.55; }
   border:     1px solid rgba(255, 69, 58, 0.15);
 }
 
-/* ── Period button active state ──────────────────────────────────────────────── */
-.period-btn.active {
+/* ── Filter button active states ────────────────────────────────────────────── */
+.period-btn.active,
+.category-filter.active {
   background:   rgba(10, 132, 255, 0.15);
   color:        var(--blue);
   border-color: rgba(10, 132, 255, 0.2);
+}
+.category-filter {
+  font-size:    12px;
+  white-space:  nowrap;
 }
 
 /* ── Status dots ────────────────────────────────────────────────────────────── */

@@ -25,14 +25,19 @@
 <div class="page-header flex-between">
   <div>
     <h1 class="page-title">Inbox</h1>
-    <p class="page-subtitle">{{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} awaiting review</p>
+    <p class="page-subtitle" id="inbox-subtitle">{{ drafts|length }} pending draft{% if drafts|length != 1 %}s{% endif %} awaiting review</p>
   </div>
+</div>
+
+<!-- Category filter -->
+<div id="category-filters" style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+  <button class="btn btn-sm category-filter active" data-cat="all" onclick="filterCategory('all', this)">All</button>
 </div>
 
 {% if drafts %}
 <div class="draft-list">
   {% for d in drafts %}
-  <div class="glass-card draft-card" data-draft-id="{{ d.id }}">
+  <div class="glass-card draft-card" data-draft-id="{{ d.id }}" data-category="{{ d.classification or 'uncategorized' }}">
 
     <div class="draft-card-header">
       <div>
@@ -166,4 +171,70 @@
     </div>
   </div>
 </div>
+
+{% block scripts %}
+<script>
+// ── Category grouping ─────────────────────────────────────────────────────
+const CATEGORY_GROUPS = {
+  'Healing Requests': ['healing_request', 'personal_healing_request', 'one_on_one_request', 'one_on_one_session_request', 'one_on_one_healing_request', 'private_session_request', 'private_healing_request', 'private_healing_inquiry', 'distance_healing_request', 'in_person_healing_request', 'healing_session_request', 'healing_request_personal', 'private_session_inquiry', 'one_on_one_appointment_request', 'individual_appointment_request', 'appointment_request', 'one_on_one_healing_enquiry', 'one_on_one_session_enquiry', 'new_enquiry_healing_request', 'personal_session_request', 'healing_inquiry'],
+  'Events & Bookings': ['event_inquiry', 'event_access_issue', 'event_access_help', 'event_question', 'event_booking_inquiry', 'event_booking_help', 'event_access_question', 'event_details_request', 'event_details_inquiry', 'event_details_question', 'event_time_inquiry', 'event_timing_inquiry', 'event_timing_enquiry', 'event_timing_request', 'event_time_zone_clarification', 'event_scheduling_inquiry', 'event_scheduling_conflict', 'event_language_inquiry', 'event_confirmation_confusion', 'event_ticket_inquiry', 'event_invitation_partnership', 'event_replay_question', 'event_recording_question', 'event_feedback_confusion', 'event_notifications_inquiry', 'event_access_replay', 'event_inquiry_and_personal_healing_request', 'booking_inquiry', 'booking_request', 'booking_enquiry', 'eventbrite_access_issue', 'eventbrite_access_help', 'eventbrite_access_frustration', 'eventbrite_purchase_issue', 'eventbrite_ticket_access', 'ticket_purchase_issue', 'ticket_transfer_request'],
+  'Access & Login': ['cant_login', 'cant_login_kajabi', 'kajabi_access_issue', 'kajabi_access_help', 'kajabi_content_access', 'kajabi_content_not_displaying', 'login_password_issue', 'login_password_reset_issue', 'password_reset_help', 'access_issue_wrong_email', 'access_confusion', 'access_help', 'access_and_enrollment_inquiry', 'access_and_event_info', 'signup_access_issue', 'account_wrong_email', 'account_lookup_mismatch', 'missing_access_content_not_showing', 'missing_access_account_not_found', 'missing_access_link', 'content_access_inquiry', 'course_access_inquiry', 'membership_access_inquiry', 'access_issue_recording_request', 'access_previous_recordings'],
+  'Recordings & Replays': ['recording_access', 'recording_access_question', 'recording_access_inquiry', 'recording_access_request', 'recording_access_and_event_info', 'replay_access', 'replay_access_question', 'replay_access_request', 'replay_access_issue', 'replay_content_question', 'replay_healing_question', 'session_recording_request', 'missed_event_recording_access', 'missed_event_recording_request', 'event_recording_question'],
+  'Zoom & Links': ['missing_zoom_link', 'missing_zoom_link_upcoming_event', 'missing_event_link', 'facebook_live_location'],
+  'Payments & Refunds': ['refund_request', 'refund_and_cancellation_request', 'cancellation_request', 'cancellation_and_refund_request', 'payment_issue', 'payment_method_inquiry', 'payment_confirmation_no_context', 'payment_verification', 'billing_confusion', 'pricing_question', 'pricing_inquiry', 'pricing_and_scholarship_inquiry', 'discount_request', 'discount_inquiry', 'discount_payment_inquiry', 'discount_free_access_request', 'enquiry_pricing_payment_plan', 'sign_up_inquiry_payment_plan', 'invoice_request', 'signup_inquiry_and_discount_request', 'inquiry_teaching_and_discount', 'pre_purchase_enquiry', 'pre_purchase_inquiry'],
+  'Feedback & Updates': ['positive_feedback', 'positive_feedback_healing_update', 'positive_feedback_personal_story', 'positive_feedback_interest', 'positive_feedback_gratitude', 'positive_feedback_promotion', 'positive_feedback_thank_you', 'positive_feedback_personal_share', 'positive_feedback_frustration_resolved', 'positive_feedback_and_business_inquiry', 'session_update_positive_feedback', 'session_update_healing_checkin', 'thank_you_positive_feedback', 'thank_you_healing_update', 'thank_you_feedback', 'feedback_and_question', 'feedback_suggestion', 'feedback_disappointment', 'feedback_criticism', 'suggestion_feedback', 'social_media_moderation_feedback', 'healing_update_negative', 'healing_update_personal_share', 'healing_update_checkin', 'healing_update_thank_you', 'healing_followup', 'support_healing_followup', 'support_healing_feedback', 'health_update_post_session', 'personal_sharing_healing_experience', 'personal_experience_sharing', 'healing_experience_question'],
+  'Personal to Charlie': ['personal_message_to_charlie', 'personal_message_to_charlie_healing_request', 'personal_message_from_charlie', 'testimonial_personal_letter', 'video_testimonial_submission', 'video_testimonial_link_request'],
+  'Escalations': ['escalation_vulnerable_person', 'escalation_personal_distress', 'escalation_special_arrangement', 'escalation_unknown_system', 'escalate_interview_request', 'scam_verification_request', 'scam_report_followup', 'community_removal_appeal', 'health_advice_request'],
+  'ENNIE App': ['ennie_app_enquiry', 'ennie_app_inquiry', 'ennie_app_access_request', 'ennie_app_and_volunteer_inquiry', 'ennie_waitlist_inquiry', 'ennie_waitlist_enquiry', 'ennie_waitlist_technical_issue', 'ennie_app_waitlist'],
+  'Facebook Group': ['facebook_group_access', 'facebook_access_request', 'facebook_group_access_and_qa_info', 'subscription_inquiry_facebook_access'],
+  'Volunteer': ['volunteer_case_submission', 'volunteer_case_study', 'volunteer_case_application', 'volunteer_case_withdrawal', 'volunteer_application', 'volunteer_interview_offer'],
+};
+
+const catLookup = {};
+for (const [group, slugs] of Object.entries(CATEGORY_GROUPS)) {
+  for (const s of slugs) catLookup[s] = group;
+}
+function getCategoryGroup(slug) { return catLookup[slug] || 'General'; }
+
+// Build filter buttons from actual data
+(function buildFilters() {
+  const cards = document.querySelectorAll('.draft-card[data-category]');
+  const counts = {};
+  cards.forEach(c => {
+    const group = getCategoryGroup(c.dataset.category);
+    c.dataset.categoryGroup = group;
+    counts[group] = (counts[group] || 0) + 1;
+  });
+  const bar = document.getElementById('category-filters');
+  Object.entries(counts).sort((a, b) => b[1] - a[1]).forEach(([group, count]) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm category-filter';
+    btn.dataset.cat = group;
+    btn.textContent = group + ' (' + count + ')';
+    btn.onclick = function() { filterCategory(group, this); };
+    bar.appendChild(btn);
+  });
+})();
+
+function filterCategory(cat, btn) {
+  document.querySelectorAll('.category-filter').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const cards = document.querySelectorAll('.draft-card[data-category]');
+  let shown = 0;
+  cards.forEach(c => {
+    if (cat === 'all' || c.dataset.categoryGroup === cat) {
+      c.style.display = '';
+      shown++;
+    } else {
+      c.style.display = 'none';
+    }
+  });
+  const sub = document.getElementById('inbox-subtitle');
+  if (sub) {
+    sub.textContent = cat === 'all'
+      ? cards.length + ' pending draft' + (cards.length !== 1 ? 's' : '') + ' awaiting review'
+      : shown + ' ' + cat + ' draft' + (shown !== 1 ? 's' : '');
+  }
+}
+</script>
 {% endblock %}
