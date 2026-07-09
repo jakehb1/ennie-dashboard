@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}Timesheet{% endblock %}
+
+{% block content %}
+<div class="page-header flex-between">
+  <div>
+    <h1 class="page-title">Timesheet</h1>
+    <p class="page-subtitle">Track your hours</p>
+  </div>
+</div>
+
+<!-- Clock In / Out -->
+<div class="glass-card" style="padding:28px 24px;margin-bottom:24px;">
+  <div id="clock-section" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div>
+      <div id="clock-status" style="font-size:15px;font-weight:600;color:var(--text-primary);">Checking status…</div>
+      <div id="clock-timer" style="font-size:32px;font-weight:700;letter-spacing:-1px;color:var(--text-primary);margin-top:4px;display:none;">00:00:00</div>
+      <div id="clock-since" style="font-size:12px;color:var(--text-tertiary);margin-top:4px;"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-success" id="btn-clock-in" onclick="clockIn()" style="display:none;">
+        ▶ Clock In
+      </button>
+      <button class="btn btn-danger" id="btn-clock-out" onclick="showClockOutModal()" style="display:none;">
+        ⏹ Clock Out
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Period selector + summary -->
+<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+  <span style="font-size:13px;color:var(--text-tertiary);font-weight:500;">Period:</span>
+  <button class="btn btn-sm period-btn active" data-days="7" onclick="setPeriod(7, this)">7 days</button>
+  <button class="btn btn-sm period-btn" data-days="14" onclick="setPeriod(14, this)">14 days</button>
+  <button class="btn btn-sm period-btn" data-days="30" onclick="setPeriod(30, this)">30 days</button>
+  <div style="margin-left:auto;">
+    <button class="btn btn-sm btn-secondary" onclick="showManualModal()">+ Add Manual Entry</button>
+  </div>
+</div>
+
+<!-- Team summary -->
+<div id="team-summary" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;margin-bottom:28px;">
+</div>
+
+<!-- Recent entries -->
+<div id="entries-list" style="display:flex;flex-direction:column;gap:10px;">
+  <div style="text-align:center;padding:40px;"><div class="spinner"></div></div>
+</div>
+
+<!-- Clock Out Modal -->
+<div class="modal-overlay" id="clock-out-modal">
+  <div class="modal">
+    <div class="modal-title">Clock Out</div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <textarea id="clock-out-notes" rows="3" placeholder="What did you work on?"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('clock-out-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmClockOut()">Clock Out</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manual Entry Modal -->
+<div class="modal-overlay" id="manual-modal">
+  <div class="modal">
+    <div class="modal-title">Add Manual Entry</div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" id="manual-date" style="color-scheme:dark;">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group">
+        <label class="form-label">Start Time</label>
+        <input type="time" id="manual-start" style="color-scheme:dark;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">End Time</label>
+        <input type="time" id="manual-end" style="color-scheme:dark;">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <textarea id="manual-notes" rows="2" placeholder="What did you work on?"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('manual-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitManualEntry()">Add Entry</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPeriodDays = 7;
+let clockInTime = null;
+let timerInterval = null;
+
+// ── Clock status ──────────────────────────────────────
+async function checkClockStatus() {
+  try {
+    const res = await apiGet('/api/timesheet/status');
+    if (res.clocked_in) {
+      clockInTime = new Date(res.entry.clock_in.replace(' ', 'T'));
+      document.getElementById('clock-status').textContent = 'You are clocked in';
+      document.getElementById('clock-status').style.color = 'var(--green)';
+      document.getElementById('clock-since').textContent = 'Since ' + res.entry.clock_in;
+      document.getElementById('btn-clock-in').style.display = 'none';
+      document.getElementById('btn-clock-out').style.display = '';
+      document.getElementById('clock-timer').style.display = '';
+      startTimer();
+    } else {
+      clockInTime = null;
+      document.getElementById('clock-status').textContent = 'Not clocked in';
+      document.getElementById('clock-status').style.color = 'var(--text-secondary)';
+      document.getElementById('clock-since').textContent = '';
+      document.getElementById('btn-clock-in').style.display = '';
+      document.getElementById('btn-clock-out').style.display = 'none';
+      document.getElementById('clock-timer').style.display = 'none';
+      stopTimer();
+    }
+  } catch (e) {
+    document.getElementById('clock-status').textContent = 'Error checking status';
+  }
+}
+
+function startTimer() {
+  stopTimer();
+  updateTimerDisplay();
+  timerInterval = setInterval(updateTimerDisplay, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+function updateTimerDisplay() {
+  if (!clockInTime) return;
+  const diff = Math.floor((Date.now() - clockInTime.getTime()) / 1000);
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  const s = diff % 60;
+  document.getElementById('clock-timer').textContent =
+    String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+async function clockIn() {
+  const res = await apiPost('/api/timesheet/clock-in');
+  if (res.ok) { toast('Clocked in', 'success'); checkClockStatus(); }
+  else toast(res.error || 'Failed to clock in', 'error');
+}
+
+function showClockOutModal() {
+  document.getElementById('clock-out-notes').value = '';
+  openModal('clock-out-modal');
+}
+
+async function confirmClockOut() {
+  const notes = document.getElementById('clock-out-notes').value.trim();
+  const res = await apiPost('/api/timesheet/clock-out', { notes });
+  if (res.ok) {
+    const mins = res.duration_minutes;
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    toast('Clocked out — ' + h + 'h ' + m + 'm', 'success');
+    closeModal('clock-out-modal');
+    checkClockStatus();
+    loadData();
+  } else {
+    toast(res.error || 'Failed to clock out', 'error');
+  }
+}
+
+// ── Period + data loading ────────────────────────────
+function setPeriod(days, btn) {
+  currentPeriodDays = days;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  loadData();
+}
+
+async function loadData() {
+  await Promise.all([loadSummary(), loadEntries()]);
+}
+
+async function loadSummary() {
+  const res = await apiGet('/api/timesheet/summary?days=' + currentPeriodDays);
+  const el = document.getElementById('team-summary');
+  if (!res.summary || !res.summary.length) {
+    el.innerHTML = '<div class="glass-card stat-card"><div class="stat-number" style="font-size:18px;">—</div><div class="stat-label">No data yet</div></div>';
+    return;
+  }
+  el.innerHTML = res.summary.map(u => {
+    const hours = u.total_hours;
+    const sessions = u.sessions;
+    return '<div class="glass-card stat-card">'
+      + '<div class="stat-number">' + hours + '<span style="font-size:14px;font-weight:500;color:var(--text-tertiary);"> hrs</span></div>'
+      + '<div class="stat-label">' + esc(u.display_name) + '</div>'
+      + '<div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">' + sessions + ' session' + (sessions !== 1 ? 's' : '') + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+async function loadEntries() {
+  const res = await apiGet('/api/timesheet/entries?days=' + currentPeriodDays);
+  const el = document.getElementById('entries-list');
+  if (!res.entries || !res.entries.length) {
+    el.innerHTML = '<div class="glass-card empty-state"><div class="empty-state-icon">⏰</div><h3>No entries</h3><p>Clock in to start tracking your time.</p></div>';
+    return;
+  }
+
+  const displayNames = { jakeh: 'Jakeh', casey: 'Casey', charlie: 'Charlie', kara: 'Kara' };
+  el.innerHTML = res.entries.map(e => {
+    const name = displayNames[e.username] || e.username;
+    const inDate = e.clock_in.substring(0, 10);
+    const inTime = e.clock_in.substring(11, 16);
+    const outTime = e.clock_out ? e.clock_out.substring(11, 16) : '—';
+    const active = !e.clock_out;
+    const durMins = e.duration_minutes || 0;
+    const h = Math.floor(durMins / 60);
+    const m = Math.round(durMins % 60);
+    const durStr = active ? '<span style="color:var(--green);font-weight:600;">Active</span>' : h + 'h ' + m + 'm';
+
+    return '<div class="glass-card" style="padding:16px 20px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">'
+      + '<div>'
+      + '<span style="font-size:14px;font-weight:600;color:var(--text-primary);">' + esc(name) + '</span>'
+      + '<span style="font-size:12px;color:var(--text-tertiary);margin-left:10px;">' + inDate + '</span>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:14px;">'
+      + '<span style="font-size:13px;color:var(--text-secondary);">' + inTime + ' → ' + outTime + '</span>'
+      + '<span style="font-size:14px;font-weight:600;">' + durStr + '</span>'
+      + '</div>'
+      + '</div>'
+      + (e.notes ? '<div style="font-size:12px;color:var(--text-tertiary);margin-top:6px;border-left:2px solid var(--glass-border);padding-left:10px;">' + esc(e.notes) + '</div>' : '')
+      + '</div>';
+  }).join('');
+}
+
+// ── Manual entry ─────────────────────────────────────
+function showManualModal() {
+  const today = new Date().toISOString().substring(0, 10);
+  document.getElementById('manual-date').value = today;
+  document.getElementById('manual-start').value = '09:00';
+  document.getElementById('manual-end').value = '17:00';
+  document.getElementById('manual-notes').value = '';
+  openModal('manual-modal');
+}
+
+async function submitManualEntry() {
+  const date = document.getElementById('manual-date').value;
+  const start = document.getElementById('manual-start').value;
+  const end = document.getElementById('manual-end').value;
+  const notes = document.getElementById('manual-notes').value.trim();
+  if (!date || !start || !end) { toast('All time fields required', 'error'); return; }
+  const res = await apiPost('/api/timesheet/manual', {
+    clock_in: date + ' ' + start,
+    clock_out: date + ' ' + end,
+    notes: notes
+  });
+  if (res.ok) {
+    const mins = res.duration_minutes;
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    toast('Entry added — ' + h + 'h ' + m + 'm', 'success');
+    closeModal('manual-modal');
+    loadData();
+  } else {
+    toast(res.error || 'Failed to add entry', 'error');
+  }
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ── Init ─────────────────────────────────────────────
+checkClockStatus();
+loadData();
+</script>
+{% endblock %}

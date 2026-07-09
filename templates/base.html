@@ -75,6 +75,10 @@
        class="nav-link{% if request.endpoint == 'lookup_page' %} active{% endif %}">
       Lookup
     </a>
+    <a href="{{ url_for('timesheet_page') }}"
+       class="nav-link{% if request.endpoint == 'timesheet_page' %} active{% endif %}">
+      Timesheet
+    </a>
   </div>
 
   <div class="nav-search">

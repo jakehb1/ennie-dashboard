@@ -60,8 +60,20 @@
 
     {% if d.draft_body or d.draft_text %}
     <div style="margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);margin-bottom:6px;">Draft reply</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray);">Draft reply</div>
+        {% if d.committee_confidence %}
+        {% set conf_val = d.committee_confidence|replace('%','')|float(0) %}
+        <div class="confidence-badge{% if conf_val >= 85 %} confidence-high{% elif conf_val >= 60 %} confidence-med{% else %} confidence-low{% endif %}">
+          <span class="confidence-icon">{% if conf_val >= 85 %}✦{% elif conf_val >= 60 %}◉{% else %}⚠{% endif %}</span>
+          AI Confidence: {{ d.committee_confidence }}{% if '%' not in (d.committee_confidence|string) %}%{% endif %}
+        </div>
+        {% endif %}
+      </div>
       <div class="draft-preview">{{ d.draft_body or d.draft_text }}</div>
+      {% if d.committee_model %}
+      <div style="font-size:11px;color:var(--text-tertiary);margin-top:6px;">Model: {{ d.committee_model }}</div>
+      {% endif %}
     </div>
     {% endif %}
 

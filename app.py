@@ -84,11 +84,32 @@ def init_db():
     cur.close()
     conn.close()
 
+def init_time_entries():
+    """Create time_entries table for timesheet tracking."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS time_entries (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL,
+            clock_in TEXT NOT NULL,
+            clock_out TEXT DEFAULT '',
+            duration_minutes REAL DEFAULT 0,
+            notes TEXT DEFAULT '',
+            created_at TEXT DEFAULT ''
+        )
+    ''')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_time_entries_username ON time_entries(username)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_time_entries_clock_in ON time_entries(clock_in)')
+    cur.close()
+    conn.close()
+
 # Initialize on startup
 if DATABASE_URL:
     try:
         init_db()
-        print('✅ Postgres connected and drafts table ready')
+        init_time_entries()
+        print('✅ Postgres connected and drafts + time_entries tables ready')
     except Exception as e:
         print(f'⚠️ Postgres init failed: {e}')
 
@@ -1506,6 +1527,219 @@ def bulk_import():
         return jsonify({'ok': True, 'imported': imported, 'skipped': skipped})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# ── Timesheet routes ─────────────────────────────────────────────────────────
+
+@app.route('/timesheet')
+@login_required
+def timesheet_page():
+    """Render the timesheet page."""
+    return render_template('timesheet.html')
+
+@app.route('/api/timesheet/status', methods=['GET'])
+@login_required
+def timesheet_status():
+    """Check if current user is clocked in."""
+    try:
+        user = session.get('user', '')
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT * FROM time_entries
+            WHERE username = %s AND clock_out = ''
+            ORDER BY clock_in DESC LIMIT 1
+        """, (user,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row:
+            return jsonify({'clocked_in': True, 'entry': dict(row)})
+        return jsonify({'clocked_in': False})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/timesheet/clock-in', methods=['POST'])
+@login_required
+def timesheet_clock_in():
+    """Clock in the current user."""
+    try:
+        user = session.get('user', '')
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # Check not already clocked in
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT id FROM time_entries
+            WHERE username = %s AND clock_out = ''
+            LIMIT 1
+        """, (user,))
+        if cur.fetchone():
+            cur.close(); conn.close()
+            return jsonify({'error': 'Already clocked in'}), 409
+        cur.execute("""
+            INSERT INTO time_entries (username, clock_in, created_at)
+            VALUES (%s, %s, %s) RETURNING id
+        """, (user, now, now))
+        entry_id = cur.fetchone()['id']
+        cur.close()
+        conn.close()
+        return jsonify({'ok': True, 'id': entry_id, 'clock_in': now})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/timesheet/clock-out', methods=['POST'])
+@login_required
+def timesheet_clock_out():
+    """Clock out the current user."""
+    try:
+        user = session.get('user', '')
+        data = request.get_json() or {}
+        notes = data.get('notes', '').strip()
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT * FROM time_entries
+            WHERE username = %s AND clock_out = ''
+            ORDER BY clock_in DESC LIMIT 1
+        """, (user,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Not clocked in'}), 409
+        # Calculate duration
+        try:
+            clock_in_dt = datetime.strptime(row['clock_in'], '%Y-%m-%d %H:%M:%S')
+            clock_out_dt = datetime.strptime(now, '%Y-%m-%d %H:%M:%S')
+            duration = (clock_out_dt - clock_in_dt).total_seconds() / 60.0
+        except Exception:
+            duration = 0
+        cur.execute("""
+            UPDATE time_entries SET clock_out = %s, duration_minutes = %s, notes = %s
+            WHERE id = %s
+        """, (now, round(duration, 1), notes, row['id']))
+        cur.close()
+        conn.close()
+        return jsonify({'ok': True, 'duration_minutes': round(duration, 1), 'clock_out': now})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/timesheet/entries', methods=['GET'])
+@login_required
+def timesheet_entries():
+    """Get time entries. Optional filters: user, days (default 7)."""
+    try:
+        target_user = request.args.get('user', '')
+        days = request.args.get('days', 7, type=int)
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cutoff = (datetime.now() - __import__('datetime').timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+        if target_user:
+            cur.execute("""
+                SELECT * FROM time_entries
+                WHERE username = %s AND clock_in >= %s
+                ORDER BY clock_in DESC
+            """, (target_user, cutoff))
+        else:
+            cur.execute("""
+                SELECT * FROM time_entries
+                WHERE clock_in >= %s
+                ORDER BY clock_in DESC
+            """, (cutoff,))
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+        return jsonify({'entries': rows, 'count': len(rows)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/timesheet/summary', methods=['GET'])
+@login_required
+def timesheet_summary():
+    """Get summary stats per user for the given period. Optional: days (default 7)."""
+    try:
+        days = request.args.get('days', 7, type=int)
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cutoff = (datetime.now() - __import__('datetime').timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+        cur.execute("""
+            SELECT username,
+                   COUNT(*) as sessions,
+                   COALESCE(SUM(duration_minutes), 0) as total_minutes
+            FROM time_entries
+            WHERE clock_in >= %s AND clock_out != ''
+            GROUP BY username
+            ORDER BY total_minutes DESC
+        """, (cutoff,))
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+        # Format
+        for r in rows:
+            mins = r['total_minutes']
+            r['total_hours'] = round(mins / 60, 1)
+            r['display_name'] = ADMIN_DISPLAY.get(r['username'], r['username'])
+        return jsonify({'summary': rows, 'days': days})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/timesheet/<int:entry_id>', methods=['DELETE'])
+@login_required
+def delete_time_entry(entry_id):
+    """Delete a time entry (own entries only)."""
+    try:
+        user = session.get('user', '')
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT * FROM time_entries WHERE id = %s', (entry_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Entry not found'}), 404
+        if row['username'] != user:
+            cur.close(); conn.close()
+            return jsonify({'error': 'Can only delete your own entries'}), 403
+        cur.execute('DELETE FROM time_entries WHERE id = %s', (entry_id,))
+        cur.close()
+        conn.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/timesheet/manual', methods=['POST'])
+@login_required
+def timesheet_manual_entry():
+    """Manually add a completed time entry."""
+    try:
+        user = session.get('user', '')
+        data = request.get_json() or {}
+        clock_in = data.get('clock_in', '').strip()
+        clock_out = data.get('clock_out', '').strip()
+        notes = data.get('notes', '').strip()
+        if not clock_in or not clock_out:
+            return jsonify({'error': 'clock_in and clock_out required'}), 400
+        try:
+            ci = datetime.strptime(clock_in, '%Y-%m-%d %H:%M')
+            co = datetime.strptime(clock_out, '%Y-%m-%d %H:%M')
+            duration = (co - ci).total_seconds() / 60.0
+            if duration <= 0:
+                return jsonify({'error': 'clock_out must be after clock_in'}), 400
+        except ValueError:
+            return jsonify({'error': 'Format: YYYY-MM-DD HH:MM'}), 400
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cur.execute("""
+            INSERT INTO time_entries (username, clock_in, clock_out, duration_minutes, notes, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+        """, (user, ci.strftime('%Y-%m-%d %H:%M:%S'), co.strftime('%Y-%m-%d %H:%M:%S'), round(duration, 1), notes, now))
+        entry_id = cur.fetchone()['id']
+        cur.close()
+        conn.close()
+        return jsonify({'ok': True, 'id': entry_id, 'duration_minutes': round(duration, 1)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
