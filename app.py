@@ -543,7 +543,19 @@ SUPPORT_TEMPLATE = '''
             </div>
 
             <div class="reply">
-                <h4>AI Draft Reply</h4>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <h4 style="margin:0;">AI Draft Reply</h4>
+                    {% if draft.committee_confidence %}
+                    {% set conf_raw = draft.committee_confidence|string|replace('%','')|float(0) %}
+                    {% if conf_raw <= 5 %}{% set conf_pct = (conf_raw / 5 * 100)|round|int %}{% else %}{% set conf_pct = conf_raw|round|int %}{% endif %}
+                    <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap;
+                        {% if conf_pct >= 80 %}background:rgba(52,199,89,0.12);color:#34C759;border:1px solid rgba(52,199,89,0.15);
+                        {% elif conf_pct >= 50 %}background:rgba(255,159,10,0.12);color:#FF9F0A;border:1px solid rgba(255,159,10,0.15);
+                        {% else %}background:rgba(255,69,58,0.12);color:#FF453A;border:1px solid rgba(255,69,58,0.15);{% endif %}">
+                        {% if conf_pct >= 80 %}✦{% elif conf_pct >= 50 %}◉{% else %}⚠{% endif %} AI Confidence: {{ conf_pct }}%
+                    </span>
+                    {% endif %}
+                </div>
                 <p class="draft-preview">{{ draft.draft_body }}</p>
 
                 <div class="inline-edit-form" id="edit-form-{{ draft.id }}">
