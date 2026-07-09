@@ -47,7 +47,7 @@
 {% if drafts %}
 <div class="draft-list">
   {% for d in drafts %}
-  <div class="glass-card draft-card" data-draft-id="{{ d.id }}" data-category="{{ d.classification or 'uncategorized' }}" data-date="{{ d.created_at or '' }}" data-confidence="{{ d.committee_confidence|default('0', true) }}">
+  <div class="glass-card draft-card" data-draft-id="{{ d.id }}" data-category="{{ d.classification or 'uncategorized' }}" data-date="{{ d.created_at or '' }}" data-confidence="{{ d.committee_confidence or '0' }}">
 
     <div class="draft-card-header">
       <div>
