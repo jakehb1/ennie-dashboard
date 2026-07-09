@@ -29,15 +29,25 @@
   </div>
 </div>
 
-<!-- Category filter -->
+<!-- Sort + Category filter -->
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="font-size:12px;color:var(--text-tertiary);font-weight:500;">Sort:</span>
+    <button class="btn btn-sm sort-btn active" data-sort="newest" onclick="sortDrafts('newest', this)">Newest</button>
+    <button class="btn btn-sm sort-btn" data-sort="oldest" onclick="sortDrafts('oldest', this)">Oldest</button>
+    <button class="btn btn-sm sort-btn" data-sort="confidence-high" onclick="sortDrafts('confidence-high', this)">Confidence ↑</button>
+    <button class="btn btn-sm sort-btn" data-sort="confidence-low" onclick="sortDrafts('confidence-low', this)">Confidence ↓</button>
+  </div>
+</div>
 <div id="category-filters" style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+  <span style="font-size:12px;color:var(--text-tertiary);font-weight:500;">Category:</span>
   <button class="btn btn-sm category-filter active" data-cat="all" onclick="filterCategory('all', this)">All</button>
 </div>
 
 {% if drafts %}
 <div class="draft-list">
   {% for d in drafts %}
-  <div class="glass-card draft-card" data-draft-id="{{ d.id }}" data-category="{{ d.classification or 'uncategorized' }}">
+  <div class="glass-card draft-card" data-draft-id="{{ d.id }}" data-category="{{ d.classification or 'uncategorized' }}" data-date="{{ d.created_at or '' }}" data-confidence="{{ d.committee_confidence|default('0', true) }}">
 
     <div class="draft-card-header">
       <div>
@@ -174,6 +184,34 @@
 
 {% block scripts %}
 <script>
+// ── Sorting ─────────────────────────────────────────────────────────
+function sortDrafts(mode, btn) {
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  const list = document.querySelector('.draft-list');
+  if (!list) return;
+  const cards = Array.from(list.querySelectorAll('.draft-card'));
+
+  cards.sort((a, b) => {
+    if (mode === 'newest') return (b.dataset.date || '').localeCompare(a.dataset.date || '');
+    if (mode === 'oldest') return (a.dataset.date || '').localeCompare(b.dataset.date || '');
+    if (mode === 'confidence-high') {
+      const ca = parseFloat(a.dataset.confidence) || 0;
+      const cb = parseFloat(b.dataset.confidence) || 0;
+      return cb - ca;
+    }
+    if (mode === 'confidence-low') {
+      const ca = parseFloat(a.dataset.confidence) || 0;
+      const cb = parseFloat(b.dataset.confidence) || 0;
+      return ca - cb;
+    }
+    return 0;
+  });
+
+  cards.forEach(c => list.appendChild(c));
+}
+
 // ── Category grouping ─────────────────────────────────────────────────────
 const CATEGORY_GROUPS = {
   'Healing Requests': ['healing_request', 'personal_healing_request', 'one_on_one_request', 'one_on_one_session_request', 'one_on_one_healing_request', 'private_session_request', 'private_healing_request', 'private_healing_inquiry', 'distance_healing_request', 'in_person_healing_request', 'healing_session_request', 'healing_request_personal', 'private_session_inquiry', 'one_on_one_appointment_request', 'individual_appointment_request', 'appointment_request', 'one_on_one_healing_enquiry', 'one_on_one_session_enquiry', 'new_enquiry_healing_request', 'personal_session_request', 'healing_inquiry'],

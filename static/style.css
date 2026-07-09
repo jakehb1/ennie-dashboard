@@ -489,12 +489,14 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.55; }
 
 /* ── Filter button active states ────────────────────────────────────────────── */
 .period-btn.active,
-.category-filter.active {
+.category-filter.active,
+.sort-btn.active {
   background:   rgba(10, 132, 255, 0.15);
   color:        var(--blue);
   border-color: rgba(10, 132, 255, 0.2);
 }
-.category-filter {
+.category-filter,
+.sort-btn {
   font-size:    12px;
   white-space:  nowrap;
 }
