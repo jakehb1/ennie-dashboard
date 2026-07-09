@@ -1383,11 +1383,11 @@ def inbox_page():
 
     # Pending drafts sorted: urgent first, then oldest first
     pending = [d for d in all_drafts if d.get('status') == 'pending']
+    # Sort: newest first (urgent emails still prioritized at top)
+    pending.sort(key=lambda d: d.get('created_at', ''), reverse=True)
+    # Then stable-sort urgent to top
     urgency_order = {'urgent': 0, 'moderate': 1, 'not_urgent': 2, '': 2}
-    pending.sort(key=lambda d: (
-        urgency_order.get(d.get('urgency', ''), 2),
-        d.get('created_at', '')
-    ))
+    pending.sort(key=lambda d: urgency_order.get(d.get('urgency', ''), 2))
 
     return render_template('inbox.html',
         drafts=pending,
