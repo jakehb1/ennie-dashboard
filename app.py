@@ -75,6 +75,8 @@ def init_db():
         "hidden_trace_id TEXT DEFAULT ''",
         "rating INTEGER DEFAULT 0",
         "rated_by TEXT DEFAULT ''",
+        "first_approved_by TEXT DEFAULT ''",
+        "first_approved_at TEXT DEFAULT ''",
     ]:
         col_name = col_def.split()[0]
         try:
@@ -525,12 +527,13 @@ SUPPORT_TEMPLATE = '''
                     {% set st = draft.status or 'pending' %}
                     <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px;
                         {% if st == 'pending' %}background:rgba(255,255,255,0.06);color:rgba(255,200,100,0.7);border:1px solid rgba(255,200,100,0.1);
+                        {% elif st == 'pending_second_approval' %}background:rgba(0,122,255,0.12);color:#5AC8FA;border:1px solid rgba(0,122,255,0.2);
                         {% elif st == 'escalated' %}background:rgba(255,255,255,0.06);color:rgba(255,100,100,0.8);border:1px solid rgba(255,100,100,0.12);
                         {% elif st == 'approved' or st == 'sent' %}background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);
                         {% elif st == 'rejected' %}background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);
                         {% elif st == 'resolved' %}background:rgba(0,122,255,0.15);color:#5AC8FA;
                         {% else %}background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);
-                        {% endif %}">{{ st }}</span>
+                        {% endif %}">{{ 'needs 2nd approval' if st == 'pending_second_approval' else st }}</span>
                     <div class="tag">{{ (draft.classification or 'general').replace('_', ' ') }}</div>
                 </div>
             </div>
@@ -586,9 +589,13 @@ SUPPORT_TEMPLATE = '''
             <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px;">Approved by <strong style="color:rgba(255,255,255,0.7);">{{ draft.approved_by }}</strong> at {{ draft.approved_at }}</div>
             {% endif %}
 
-            {% if (draft.status or 'pending') == 'pending' %}
+            {% if draft.status == 'pending_second_approval' %}
+            <div style="font-size:12px;color:#5AC8FA;margin-bottom:8px;">First approved by <strong>{{ draft.first_approved_by }}</strong> at {{ draft.first_approved_at }} — a different team member must give the second approval.</div>
+            {% endif %}
+
+            {% if (draft.status or 'pending') in ('pending', 'pending_second_approval') %}
             <div class="actions">
-                <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">Approve</button>
+                <button class="btn btn-approve" onclick="approveDraft('{{ draft.id }}')">{{ 'Give 2nd Approval' if draft.status == 'pending_second_approval' else 'Approve' }}</button>
                 <button class="btn btn-edit" onclick="showEditForm('{{ draft.id }}')">Edit</button>
                 <button class="btn btn-escalate" onclick="showEscalationForm('{{ draft.id }}')">Escalate</button>
                 <button class="btn btn-reject" onclick="rejectDraft('{{ draft.id }}')">Reject</button>
@@ -633,7 +640,8 @@ SUPPORT_TEMPLATE = '''
 
     function approveDraft(id) {
       apiPost('/api/support/' + id + '/approve').then(res => {
-        if (res.ok) { removeDraftCard(id); toast('Draft approved!', 'success'); }
+        if (res.ok && res.status === 'approved') { removeDraftCard(id); toast('Draft fully approved (2 of 2)!', 'success'); }
+        else if (res.ok && res.status === 'pending_second_approval') { toast('First approval recorded — a second approver is needed', 'success'); setTimeout(() => location.reload(), 900); }
         else toast('Error: ' + (res.error || 'Something went wrong'), 'error');
       }).catch(() => toast('Network error', 'error'));
     }
@@ -873,10 +881,10 @@ def support_view():
     else:
         drafts = [d for d in all_drafts if d.get('status') == status_filter]
     
-    status_order = {'pending': 0, 'escalated': 1, 'approved': 2, 'sent': 3, 'rejected': 4, 'resolved': 5}
+    status_order = {'pending': 0, 'pending_second_approval': 1, 'escalated': 2, 'approved': 3, 'sent': 4, 'rejected': 5, 'resolved': 6}
     drafts.sort(key=lambda d: (status_order.get(d.get('status', ''), 99), d.get('created_at', '')), reverse=False)
-    
-    pending_count = len([d for d in all_drafts if d.get('status') == 'pending'])
+
+    pending_count = len([d for d in all_drafts if d.get('status') in ('pending', 'pending_second_approval')])
     escalated_count = len([d for d in all_drafts if d.get('status') == 'escalated'])
     approved_count = len([d for d in all_drafts if d.get('status') in ('approved', 'sent')])
     total_count = len(all_drafts)
@@ -891,25 +899,37 @@ def support_view():
 def dashboard():
     return redirect(url_for('inbox_page'))
 
+def two_person_approve(draft, approver):
+    """Two-person rule: the first approval parks the draft in pending_second_approval;
+    a DIFFERENT approver must confirm before it becomes approved (and sendable).
+    Returns (updates, response_dict, http_code)."""
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    if draft.get('status') == 'pending_second_approval':
+        if (draft.get('first_approved_by') or '') == approver:
+            return None, {'error': 'You gave the first approval — a different team member must give the second.'}, 403
+        updates = {'status': 'approved', 'approved_at': now, 'approved_by': approver}
+        resp = {'ok': True, 'status': 'approved', 'approved_by': approver,
+                'first_approved_by': draft.get('first_approved_by', '')}
+    else:
+        updates = {'status': 'pending_second_approval', 'first_approved_by': approver, 'first_approved_at': now}
+        resp = {'ok': True, 'status': 'pending_second_approval', 'first_approved_by': approver}
+    if not draft.get('original_draft_body'):
+        updates['original_draft_body'] = draft.get('draft_body', '')
+    return updates, resp, 200
+
 @app.route('/api/drafts/<draft_id>/approve', methods=['POST'])
 @login_required
 def approve_draft(draft_id):
-    """Approve a draft as-is."""
+    """Approve a draft — requires two different approvers before it is final."""
     try:
         draft = get_draft(draft_id)
         if not draft:
             return jsonify({'error': 'Draft not found'}), 404
         approver = session.get('user', 'unknown')
-        updates = {
-            'was_edited': False,
-            'status': 'approved',
-            'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'approved_by': approver,
-        }
-        if not draft.get('original_draft_body'):
-            updates['original_draft_body'] = draft.get('draft_body', '')
-        update_draft(draft_id, updates)
-        return jsonify({'ok': True, 'status': 'approved', 'approved_by': approver})
+        updates, resp, code = two_person_approve(draft, approver)
+        if updates:
+            update_draft(draft_id, updates)
+        return jsonify(resp), code
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1385,12 +1405,13 @@ def inbox_page():
 
     # Stats
     total_count = len(all_drafts)
-    pending_count = len([d for d in all_drafts if d.get('status') == 'pending'])
+    pending_count = len([d for d in all_drafts if d.get('status') in ('pending', 'pending_second_approval')])
     escalated_count = len([d for d in all_drafts if d.get('status') == 'escalated'])
     handled_count = len([d for d in all_drafts if d.get('status') in ('approved', 'sent')])
 
     # Pending drafts sorted: urgent first, then oldest first
-    pending = [d for d in all_drafts if d.get('status') == 'pending']
+    # (drafts awaiting their second approval stay in the inbox)
+    pending = [d for d in all_drafts if d.get('status') in ('pending', 'pending_second_approval')]
     # Sort: newest first (urgent emails still prioritized at top)
     pending.sort(key=lambda d: d.get('created_at', ''), reverse=True)
     # Then stable-sort urgent to top
@@ -1470,12 +1491,13 @@ def support_approve(draft_id):
         draft = get_draft(draft_id)
         if not draft:
             return jsonify({'error': 'Draft not found'}), 404
-        approver = session.get('user', 'support_agent')
-        updates = {'was_edited': False, 'status': 'approved', 'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'approved_by': approver}
-        if not draft.get('original_draft_body'):
-            updates['original_draft_body'] = draft.get('draft_body', '')
-        update_draft(draft_id, updates)
-        return jsonify({'ok': True, 'status': 'approved', 'approved_by': approver})
+        # Anonymous /support visitors all count as 'support_agent', so they can
+        # give at most one of the two required approvals.
+        approver = session.get('user') or 'support_agent'
+        updates, resp, code = two_person_approve(draft, approver)
+        if updates:
+            update_draft(draft_id, updates)
+        return jsonify(resp), code
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

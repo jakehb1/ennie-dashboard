@@ -97,10 +97,26 @@
     </div>
     {% endif %}
 
+    {% if d.status == 'pending_second_approval' %}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;border-radius:8px;background:rgba(0,122,255,0.1);border:1px solid rgba(0,122,255,0.2);font-size:13px;color:#5AC8FA;">
+      ⏳ First approved by <strong>{{ d.first_approved_by }}</strong> — needs a second approver before it can be sent
+    </div>
+    {% endif %}
+
     <div class="draft-actions">
+      {% if d.status == 'pending_second_approval' and d.first_approved_by == session.get('user') %}
+      <button class="btn btn-secondary btn-sm" disabled title="You gave the first approval — someone else must give the second" style="opacity:0.5;cursor:not-allowed;">
+        ⏳ Awaiting 2nd approver
+      </button>
+      {% elif d.status == 'pending_second_approval' %}
+      <button class="btn btn-success btn-sm" onclick="approveDraft('{{ d.id }}')">
+        ✓✓ Give 2nd Approval
+      </button>
+      {% else %}
       <button class="btn btn-success btn-sm" onclick="approveDraft('{{ d.id }}')">
         ✓ Approve
       </button>
+      {% endif %}
       <button class="btn btn-primary btn-sm" onclick="editDraft('{{ d.id }}')">
         ✎ Edit
       </button>

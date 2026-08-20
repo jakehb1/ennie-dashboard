@@ -95,8 +95,9 @@ function removeDraftCard(id) {
 // ── Approve ──────────────────────────────────────────────────────────────────
 function approveDraft(id) {
   apiPost('/api/drafts/' + id + '/approve').then(res => {
-    if (res.ok) { removeDraftCard(id); toast('Draft approved', 'success'); }
-    else        { toast('Something went wrong', 'error'); }
+    if (res.ok && res.status === 'approved') { removeDraftCard(id); toast('Draft fully approved (2 of 2)', 'success'); }
+    else if (res.ok && res.status === 'pending_second_approval') { toast('First approval recorded — a second approver is needed', 'success'); setTimeout(() => location.reload(), 900); }
+    else { toast(res.error || 'Something went wrong', 'error'); }
   }).catch(() => toast('Network error', 'error'));
 }
 
