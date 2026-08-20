@@ -561,7 +561,7 @@ SUPPORT_TEMPLATE = '''
                 <div class="inline-edit-form" id="edit-form-{{ draft.id }}">
                     <textarea class="edit-textarea" id="edit-text-{{ draft.id }}">{{ draft.draft_body }}</textarea>
                     <div class="edit-actions">
-                        <button class="btn-small btn-save" onclick="saveEdit('{{ draft.id }}')">Save & Approve</button>
+                        <button class="btn-small btn-save" onclick="saveEdit('{{ draft.id }}')">Save</button>
                         <button class="btn-small btn-cancel" onclick="cancelEdit('{{ draft.id }}')">Cancel</button>
                     </div>
                 </div>
@@ -657,7 +657,13 @@ SUPPORT_TEMPLATE = '''
       const text = document.getElementById('edit-text-' + id)?.value.trim();
       if (!text) { toast('Draft text cannot be empty', 'error'); return; }
       apiPost('/api/support/' + id + '/edit', { draft_text: text }).then(res => {
-        if (res.ok) { removeDraftCard(id); toast('Draft edited and approved!', 'success'); }
+        if (res.ok) {
+          const card = document.querySelector('[data-draft-id="' + id + '"]');
+          const preview = card ? card.querySelector('.draft-preview') : null;
+          if (preview) preview.textContent = text;
+          cancelEdit(id);
+          toast('Draft edited', 'success');
+        }
         else toast('Error: ' + (res.error || 'Something went wrong'), 'error');
       });
     }
@@ -950,15 +956,12 @@ def edit_draft(draft_id):
         updates = {
             'draft_body': draft_text,
             'was_edited': True,
-            'status': 'approved',
             'edited_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'approved_by': approver,
         }
         if not draft.get('original_draft_body'):
             updates['original_draft_body'] = draft.get('draft_body', '')
         update_draft(draft_id, updates)
-        return jsonify({'ok': True, 'status': 'edited_and_approved', 'approved_by': approver})
+        return jsonify({'ok': True, 'status': draft.get('status', 'pending'), 'edited_by': approver})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1514,15 +1517,14 @@ def support_edit(draft_id):
             return jsonify({'error': 'Draft not found'}), 404
         approver = session.get('user', 'support_agent')
         updates = {
-            'draft_body': draft_text, 'was_edited': True, 'status': 'approved',
+            'draft_body': draft_text,
+            'was_edited': True,
             'edited_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'approved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'approved_by': approver,
         }
         if not draft.get('original_draft_body'):
             updates['original_draft_body'] = draft.get('draft_body', '')
         update_draft(draft_id, updates)
-        return jsonify({'ok': True, 'status': 'edited_and_approved', 'approved_by': approver})
+        return jsonify({'ok': True, 'status': draft.get('status', 'pending'), 'edited_by': approver})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

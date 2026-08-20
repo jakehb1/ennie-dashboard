@@ -143,7 +143,7 @@ function confirmEscalate() {
   });
 }
 
-// ── Edit + Approve ───────────────────────────────────────────────────────────
+// ── Edit ─────────────────────────────────────────────────────────────────────
 function editDraft(id) {
   const card    = document.querySelector('[data-draft-id="' + id + '"]');
   const preview = card ? card.querySelector('.draft-preview') : null;
@@ -160,8 +160,15 @@ function confirmEdit() {
   const draft_text = document.getElementById('edit-draft-text').value.trim();
   if (!draft_text) { toast('Draft text required', 'error'); return; }
   apiPost('/api/drafts/' + id + '/edit', { draft_text }).then(res => {
-    if (res.ok) { removeDraftCard(id); toast('Edited and approved', 'success'); closeModal('edit-modal'); }
-    else        { toast('Something went wrong', 'error'); }
+    if (res.ok) {
+      const card = document.querySelector('[data-draft-id="' + id + '"]');
+      const preview = card ? card.querySelector('.draft-preview') : null;
+      if (preview) preview.textContent = draft_text;
+      toast('Draft edited', 'success');
+      closeModal('edit-modal');
+    } else {
+      toast('Something went wrong', 'error');
+    }
   });
 }
 
