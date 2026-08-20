@@ -855,7 +855,12 @@ def api_test():
     # Show all env vars that start with DB or PG or RAILWAY or DATABASE
     env_keys = [k for k in os.environ if any(p in k.upper() for p in ['DB', 'PG', 'DATABASE', 'POSTGRES'])]
     env_hints = {k: os.environ[k][:20] + '...' for k in env_keys}
-    return jsonify({'method': 'GET', 'status': 'success', 'db_status': db_status, 'db_count': db_count, 'db_error': db_error, 'db_url_set': bool(DATABASE_URL), 'env_hints': env_hints})
+    # Deployment info: which Railway environment/commit is actually running
+    deploy_info = {k: os.environ.get(k, '') for k in [
+        'RAILWAY_PROJECT_NAME', 'RAILWAY_ENVIRONMENT_NAME', 'RAILWAY_SERVICE_NAME',
+        'RAILWAY_GIT_BRANCH', 'RAILWAY_GIT_COMMIT_SHA', 'RAILWAY_DEPLOYMENT_ID',
+    ]}
+    return jsonify({'method': 'GET', 'status': 'success', 'db_status': db_status, 'db_count': db_count, 'db_error': db_error, 'db_url_set': bool(DATABASE_URL), 'env_hints': env_hints, 'deploy_info': deploy_info})
 
 @app.route('/support')
 def support_view():
