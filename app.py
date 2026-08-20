@@ -561,7 +561,7 @@ SUPPORT_TEMPLATE = '''
                 <div class="inline-edit-form" id="edit-form-{{ draft.id }}">
                     <textarea class="edit-textarea" id="edit-text-{{ draft.id }}">{{ draft.draft_body }}</textarea>
                     <div class="edit-actions">
-                        <button class="btn-small btn-save" onclick="saveEdit('{{ draft.id }}')">Save</button>
+                        <button class="btn-small btn-save" onclick="saveEdit('{{ draft.id }}')">Edit</button>
                         <button class="btn-small btn-cancel" onclick="cancelEdit('{{ draft.id }}')">Cancel</button>
                     </div>
                 </div>
