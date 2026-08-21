@@ -106,11 +106,37 @@ def init_time_entries():
     cur.close()
     conn.close()
 
+def init_timesheet_submissions():
+    """Create timesheet_submissions table for the approval workflow."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS timesheet_submissions (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL,
+            period_start TEXT NOT NULL,
+            period_end TEXT NOT NULL,
+            total_minutes REAL DEFAULT 0,
+            entry_count INTEGER DEFAULT 0,
+            notes TEXT DEFAULT '',
+            status TEXT DEFAULT 'submitted',
+            submitted_at TEXT DEFAULT '',
+            reviewed_by TEXT DEFAULT '',
+            reviewed_at TEXT DEFAULT '',
+            review_notes TEXT DEFAULT ''
+        )
+    ''')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_ts_sub_user ON timesheet_submissions(username)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_ts_sub_status ON timesheet_submissions(status)')
+    cur.close()
+    conn.close()
+
 # Initialize on startup
 if DATABASE_URL:
     try:
         init_db()
         init_time_entries()
+        init_timesheet_submissions()
         print('✅ Postgres connected and drafts + time_entries tables ready')
     except Exception as e:
         print(f'⚠️ Postgres init failed: {e}')
@@ -1812,6 +1838,121 @@ def timesheet_manual_entry():
         cur.close()
         conn.close()
         return jsonify({'ok': True, 'id': entry_id, 'duration_minutes': round(duration, 1)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ── Timesheet approval workflow ──────────────────────────────────────────────
+
+@app.route('/api/timesheet/submit', methods=['POST'])
+@login_required
+def timesheet_submit():
+    """Submit your own timesheet for a date range for approval."""
+    try:
+        user = session.get('user', '')
+        data = request.get_json() or {}
+        start = (data.get('start') or '').strip()
+        end = (data.get('end') or '').strip()
+        notes = (data.get('notes') or '').strip()
+        try:
+            datetime.strptime(start, '%Y-%m-%d')
+            datetime.strptime(end, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'error': 'start and end must be YYYY-MM-DD'}), 400
+        if end < start:
+            return jsonify({'error': 'End date is before start date'}), 400
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT id FROM timesheet_submissions
+            WHERE username = %s AND status = 'submitted'
+              AND period_start <= %s AND period_end >= %s
+            LIMIT 1
+        """, (user, end, start))
+        if cur.fetchone():
+            cur.close(); conn.close()
+            return jsonify({'error': 'You already have a pending submission covering part of this period'}), 409
+        cur.execute("""
+            SELECT COUNT(*) AS n, COALESCE(SUM(duration_minutes), 0) AS mins
+            FROM time_entries
+            WHERE username = %s AND clock_out != '' AND clock_in >= %s AND clock_in <= %s
+        """, (user, start + ' 00:00:00', end + ' 23:59:59'))
+        row = cur.fetchone()
+        if not row or row['n'] == 0:
+            cur.close(); conn.close()
+            return jsonify({'error': 'No completed time entries in that period'}), 400
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cur.execute("""
+            INSERT INTO timesheet_submissions
+                (username, period_start, period_end, total_minutes, entry_count, notes, status, submitted_at)
+            VALUES (%s, %s, %s, %s, %s, %s, 'submitted', %s)
+            RETURNING id
+        """, (user, start, end, round(float(row['mins']), 1), row['n'], notes, now))
+        sub_id = cur.fetchone()['id']
+        cur.close(); conn.close()
+        return jsonify({'ok': True, 'id': sub_id, 'total_minutes': round(float(row['mins']), 1), 'entry_count': row['n']}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/timesheet/submissions', methods=['GET'])
+@login_required
+def timesheet_submissions():
+    """List timesheet submissions — visible to the whole team."""
+    try:
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT * FROM timesheet_submissions ORDER BY submitted_at DESC LIMIT 100')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        for r in rows:
+            r['display_name'] = ADMIN_DISPLAY.get(r['username'], r['username'])
+            r['reviewer_name'] = ADMIN_DISPLAY.get(r['reviewed_by'], r['reviewed_by'])
+        return jsonify({'submissions': rows, 'current_user': session.get('user', '')})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def _review_timesheet_submission(sub_id, new_status, review_notes=''):
+    """Shared approve/reject logic. Approving your own timesheet is blocked;
+    rejecting your own is allowed and recorded as withdrawn."""
+    user = session.get('user', '')
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('SELECT * FROM timesheet_submissions WHERE id = %s', (sub_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        return jsonify({'error': 'Submission not found'}), 404
+    if row['status'] != 'submitted':
+        cur.close(); conn.close()
+        return jsonify({'error': f"Already {row['status']}"}), 409
+    if row['username'] == user:
+        if new_status == 'approved':
+            cur.close(); conn.close()
+            return jsonify({'error': 'You cannot approve your own timesheet — a different team member must approve it.'}), 403
+        new_status = 'withdrawn'
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute("""
+        UPDATE timesheet_submissions
+        SET status = %s, reviewed_by = %s, reviewed_at = %s, review_notes = %s
+        WHERE id = %s
+    """, (new_status, user, now, review_notes, sub_id))
+    cur.close(); conn.close()
+    return jsonify({'ok': True, 'status': new_status, 'reviewed_by': user}), 200
+
+@app.route('/api/timesheet/submissions/<int:sub_id>/approve', methods=['POST'])
+@login_required
+def timesheet_submission_approve(sub_id):
+    try:
+        return _review_timesheet_submission(sub_id, 'approved')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/timesheet/submissions/<int:sub_id>/reject', methods=['POST'])
+@login_required
+def timesheet_submission_reject(sub_id):
+    try:
+        data = request.get_json() or {}
+        return _review_timesheet_submission(sub_id, 'rejected', (data.get('notes') or '').strip())
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

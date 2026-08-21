@@ -8,13 +8,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    // Apply saved theme before first paint to avoid a flash
+    try { if (localStorage.getItem('ennie-theme') === 'light') document.documentElement.classList.add('light'); } catch (e) {}
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
   <style>
     .ennie-loader-overlay {
       position: fixed;
       inset: 0;
       z-index: 9999;
-      background: #000;
+      background: var(--bg, #000);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -87,6 +91,7 @@
   </div>
 
   <div class="nav-user">
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">☀️</button>
     <span class="user-name">{{ session.display_name }}</span>
     <a href="{{ url_for('logout') }}" class="nav-link logout">Sign out</a>
   </div>
