@@ -326,7 +326,7 @@ async function loadEntries() {
     return;
   }
 
-  const displayNames = { jakeh: 'Jakeh', casey: 'Casey', charlie: 'Charlie', kara: 'Kara' };
+  const displayNames = { jakeh: 'Jakeh', casey: 'Casey', charlie: 'Charlie', kara: 'Kara', lori: 'Lori' };
   el.innerHTML = res.entries.map(e => {
     const name = displayNames[e.username] || e.username;
     const inDate = e.clock_in.substring(0, 10);

@@ -842,3 +842,8 @@ html.light input[type="date"], html.light input[type="time"] { color-scheme: lig
 .theme-toggle .icon-moon { display: none; }
 html.light .theme-toggle .icon-sun { display: none; }
 html.light .theme-toggle .icon-moon { display: block; }
+
+/* Logo swaps with the theme (transparent PNGs, no black box in light mode) */
+.nav-logo-img.logo-light { display: none; }
+html.light .nav-logo-img.logo-dark { display: none; }
+html.light .nav-logo-img.logo-light { display: block; }

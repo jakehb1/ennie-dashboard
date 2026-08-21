@@ -147,6 +147,7 @@ ADMIN_USERS = {
     'casey':   os.environ.get('PIN_CASEY',   '1234'),
     'charlie': os.environ.get('PIN_CHARLIE', '1234'),
     'kara':    os.environ.get('PIN_KARA',    '1234'),
+    'lori':    os.environ.get('PIN_LORI',    '1234'),  # HR & payroll
 }
 
 ADMIN_DISPLAY = {
@@ -154,6 +155,7 @@ ADMIN_DISPLAY = {
     'casey':   'Casey',
     'charlie': 'Charlie',
     'kara':    'Kara',
+    'lori':    'Lori',
 }
 
 # Cache-buster for static assets — changes on every deploy so browsers
