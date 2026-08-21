@@ -1844,6 +1844,9 @@ def timesheet_manual_entry():
 
 # ── Timesheet approval workflow ──────────────────────────────────────────────
 
+# Only these users may approve/reject submitted timesheets
+TIMESHEET_APPROVERS = ('jakeh', 'charlie')
+
 @app.route('/api/timesheet/submit', methods=['POST'])
 @login_required
 def timesheet_submit():
@@ -1907,7 +1910,9 @@ def timesheet_submissions():
         for r in rows:
             r['display_name'] = ADMIN_DISPLAY.get(r['username'], r['username'])
             r['reviewer_name'] = ADMIN_DISPLAY.get(r['reviewed_by'], r['reviewed_by'])
-        return jsonify({'submissions': rows, 'current_user': session.get('user', '')})
+        user = session.get('user', '')
+        return jsonify({'submissions': rows, 'current_user': user,
+                        'is_approver': user in TIMESHEET_APPROVERS})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1928,8 +1933,12 @@ def _review_timesheet_submission(sub_id, new_status, review_notes=''):
     if row['username'] == user:
         if new_status == 'approved':
             cur.close(); conn.close()
-            return jsonify({'error': 'You cannot approve your own timesheet — a different team member must approve it.'}), 403
+            return jsonify({'error': 'You cannot approve your own timesheet — a different approver must do it.'}), 403
         new_status = 'withdrawn'
+    elif user not in TIMESHEET_APPROVERS:
+        cur.close(); conn.close()
+        names = ' or '.join(ADMIN_DISPLAY.get(u, u) for u in TIMESHEET_APPROVERS)
+        return jsonify({'error': f'Only {names} can approve or reject timesheets.'}), 403
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     cur.execute("""
         UPDATE timesheet_submissions

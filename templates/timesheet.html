@@ -264,11 +264,11 @@ async function loadSubmissions() {
     const h = Math.floor(s.total_minutes / 60), m = Math.round(s.total_minutes % 60);
     let actions = '';
     if (s.status === 'submitted') {
-      if (s.username !== CURRENT_USER) {
+      if (s.username === CURRENT_USER) {
+        actions = '<button class="btn btn-sm btn-secondary" onclick="reviewSubmission(' + s.id + ', \'reject\')">Withdraw</button>';
+      } else if (res.is_approver) {
         actions = '<button class="btn btn-sm btn-success" onclick="reviewSubmission(' + s.id + ', \'approve\')">✓ Approve</button>'
                 + '<button class="btn btn-sm btn-danger" onclick="reviewSubmission(' + s.id + ', \'reject\')">✕ Reject</button>';
-      } else {
-        actions = '<button class="btn btn-sm btn-secondary" onclick="reviewSubmission(' + s.id + ', \'reject\')">Withdraw</button>';
       }
     } else if (s.reviewed_by) {
       actions = '<span style="font-size:12px;color:var(--text-tertiary);">by ' + esc(s.reviewer_name || s.reviewed_by) + ' · ' + esc(s.reviewed_at || '') + '</span>';
