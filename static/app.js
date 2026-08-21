@@ -92,18 +92,6 @@ function removeDraftCard(id) {
   }, 210);
 }
 
-// ── Theme toggle ─────────────────────────────────────────────────────────────
-function toggleTheme() {
-  const light = document.documentElement.classList.toggle('light');
-  try { localStorage.setItem('ennie-theme', light ? 'light' : 'dark'); } catch (e) {}
-  updateThemeIcon();
-}
-function updateThemeIcon() {
-  const b = document.getElementById('theme-toggle');
-  if (b) b.textContent = document.documentElement.classList.contains('light') ? '🌙' : '☀️';
-}
-updateThemeIcon();
-
 // ── Approve ──────────────────────────────────────────────────────────────────
 function approveDraft(id) {
   apiPost('/api/drafts/' + id + '/approve').then(res => {

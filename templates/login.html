@@ -254,18 +254,24 @@
 </div>
 <script>
   (function() {
-    var anim = lottie.loadAnimation({
-      container: document.getElementById('ennie-lottie'),
-      renderer: 'svg',
-      loop: true,
-      autoplay: true,
-      path: '/static/ennie-loader.json'
-    });
+    var anim = null;
+    function hideLoader() {
+      document.getElementById('ennie-loader').classList.add('fade-out');
+      setTimeout(function() { if (anim) { try { anim.destroy(); } catch (e) {} anim = null; } }, 700);
+    }
+    // Never let a failed CDN script leave the loader stuck over the page
+    setTimeout(hideLoader, 5000);
+    try {
+      anim = lottie.loadAnimation({
+        container: document.getElementById('ennie-lottie'),
+        renderer: 'svg',
+        loop: true,
+        autoplay: true,
+        path: '/static/ennie-loader.json'
+      });
+    } catch (e) { hideLoader(); return; }
     window.addEventListener('load', function() {
-      setTimeout(function() {
-        document.getElementById('ennie-loader').classList.add('fade-out');
-        setTimeout(function() { anim.destroy(); }, 700);
-      }, 1800);
+      setTimeout(hideLoader, 1800);
     });
   })();
 </script>

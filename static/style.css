@@ -771,6 +771,10 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.55; }
   .kb-grid { grid-template-columns: 1fr; }
   table { font-size: 13px; }
   th, td {
+    padding: 8px 10px;
+  }
+}
+
 /* ── Light mode ─────────────────────────────────────────────────────────────── */
 html.light {
   color-scheme: light;
@@ -821,14 +825,20 @@ html.light input[type="date"], html.light input[type="time"] { color-scheme: lig
 
 /* Theme toggle button in the nav */
 .theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--glass-border);
   background: var(--glass);
   color: var(--text-secondary);
   border-radius: 8px;
-  padding: 5px 10px;
-  font-size: 14px;
+  width: 30px;
+  height: 30px;
   cursor: pointer;
   line-height: 1;
   transition: all var(--transition);
 }
 .theme-toggle:hover { background: var(--glass-hover); color: var(--text-primary); }
+.theme-toggle .icon-moon { display: none; }
+html.light .theme-toggle .icon-sun { display: none; }
+html.light .theme-toggle .icon-moon { display: block; }

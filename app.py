@@ -156,6 +156,14 @@ ADMIN_DISPLAY = {
     'kara':    'Kara',
 }
 
+# Cache-buster for static assets — changes on every deploy so browsers
+# never serve a stale style.css / app.js against fresh HTML.
+ASSET_VERSION = (os.environ.get('RAILWAY_GIT_COMMIT_SHA', '') or str(uuid.uuid4().hex))[:10]
+
+@app.context_processor
+def inject_asset_version():
+    return {'asset_v': ASSET_VERSION}
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):

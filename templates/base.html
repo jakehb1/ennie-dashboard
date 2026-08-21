@@ -7,10 +7,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_v }}">
   <script>
     // Apply saved theme before first paint to avoid a flash
     try { if (localStorage.getItem('ennie-theme') === 'light') document.documentElement.classList.add('light'); } catch (e) {}
+    // Inline (not in app.js) so the toggle works even with a stale cached app.js
+    function toggleTheme() {
+      const light = document.documentElement.classList.toggle('light');
+      try { localStorage.setItem('ennie-theme', light ? 'light' : 'dark'); } catch (e) {}
+    }
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
   <style>
@@ -44,18 +49,24 @@
 </div>
 <script>
   (function() {
-    var anim = lottie.loadAnimation({
-      container: document.getElementById('ennie-lottie'),
-      renderer: 'svg',
-      loop: true,
-      autoplay: true,
-      path: '{{ url_for("static", filename="ennie-loader.json") }}'
-    });
+    var anim = null;
+    function hideLoader() {
+      document.getElementById('ennie-loader').classList.add('fade-out');
+      setTimeout(function() { if (anim) { try { anim.destroy(); } catch (e) {} anim = null; } }, 700);
+    }
+    // Never let a failed CDN script leave the loader stuck over the page
+    setTimeout(hideLoader, 5000);
+    try {
+      anim = lottie.loadAnimation({
+        container: document.getElementById('ennie-lottie'),
+        renderer: 'svg',
+        loop: true,
+        autoplay: true,
+        path: '{{ url_for("static", filename="ennie-loader.json") }}'
+      });
+    } catch (e) { hideLoader(); return; }
     window.addEventListener('load', function() {
-      setTimeout(function() {
-        document.getElementById('ennie-loader').classList.add('fade-out');
-        setTimeout(function() { anim.destroy(); }, 700);
-      }, 1800);
+      setTimeout(hideLoader, 1800);
     });
   })();
 </script>
@@ -91,7 +102,15 @@
   </div>
 
   <div class="nav-user">
-    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">☀️</button>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">
+      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </svg>
+      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
     <span class="user-name">{{ session.display_name }}</span>
     <a href="{{ url_for('logout') }}" class="nav-link logout">Sign out</a>
   </div>
@@ -105,7 +124,7 @@
 <!-- Toast container -->
 <div id="toast" class="toast"></div>
 
-<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script src="{{ url_for('static', filename='app.js') }}?v={{ asset_v }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
